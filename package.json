@@ -1,0 +1,50 @@
+{
+    "type": "module",
+    "name": "@btc-vision/unit-test-framework",
+    "version": "0.0.4",
+    "description": "OP_NET Unit Test Framework. This package contains all the necessary tools to run unit tests for OP_NET smart contracts.",
+    "main": "build/index.js",
+    "scripts": {
+        "build": "gulp",
+        "prepublish": "npm-run-all build"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/btc-vision/unit-test-framework"
+    },
+    "author": "OP_NET",
+    "license": "MIT",
+    "types": "build/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./build/index.js",
+            "require": "./build/index.js",
+            "types": "./build/index.d.ts"
+        }
+    },
+    "dependencies": {
+        "@btc-vision/bitcoin": "^6.3.0",
+        "@btc-vision/logger": "^1.0.6",
+        "@btc-vision/op-vm": "^0.2.1",
+        "@btc-vision/transaction": "^1.1.3",
+        "gulp-logger-new": "^1.0.1",
+        "npm-run-all": "^4.1.5",
+        "opnet": "^1.1.19"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.14.0",
+        "@types/node": "^22.8.7",
+        "@typescript-eslint/eslint-plugin": "^8.13.0",
+        "@typescript-eslint/parser": "^8.13.0",
+        "eslint": "^9.14.0",
+        "gulp": "^5.0.0",
+        "gulp-cached": "^1.1.1",
+        "gulp-clean": "^0.4.0",
+        "gulp-eslint-new": "^2.3.0",
+        "gulp-typescript": "^6.0.0-alpha.1",
+        "prettier": "^3.3.3",
+        "tsx": "^4.19.2",
+        "typescript": "^5.6.3",
+        "typescript-eslint": "^8.13.0"
+    }
+}
