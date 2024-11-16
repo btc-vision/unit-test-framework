@@ -18,10 +18,6 @@ import { ContractDetails } from '../interfaces/ContractDetails.js';
 import { ContractParameters, RustContract } from '../vm/RustContract.js';
 import { BytecodeManager } from './GetBytecode.js';
 
-// Masks to separate the first 240 bits and the last 80 bits
-const first240BitsMask = 0x0000000000ffffffffffffffffffffffffffffffffffffffffffffffffn;
-const last80BitsMask = 0xffffffffffffff00000000000000000000000000000000000000000000000000n;
-
 export class ContractRuntime extends Logger {
     public readonly logColor: string = '#39b2f3';
 
