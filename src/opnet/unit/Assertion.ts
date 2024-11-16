@@ -25,9 +25,49 @@ export class Assertion {
         }
     }
 
+    public toBeGreaterThan(expected: number | bigint): void {
+        if (typeof this.actual !== 'number' && typeof this.actual !== 'bigint') {
+            throw new Error(`Expected value to be a number`);
+        }
+
+        if (this.actual <= expected) {
+            throw new Error(`Expected value to be greater than ${expected}`);
+        }
+    }
+
+    public toBeGreaterThanOrEqual(expected: number | bigint): void {
+        if (typeof this.actual !== 'number' && typeof this.actual !== 'bigint') {
+            throw new Error(`Expected value to be a number`);
+        }
+
+        if (this.actual < expected) {
+            throw new Error(`Expected value to be greater than or equal to ${expected}`);
+        }
+    }
+
+    public toBeLessThan(expected: number | bigint): void {
+        if (typeof this.actual !== 'number' && typeof this.actual !== 'bigint') {
+            throw new Error(`Expected value to be a number`);
+        }
+
+        if (this.actual >= expected) {
+            throw new Error(`Expected value to be less than ${expected}`);
+        }
+    }
+
+    public toBeLessThanOrEqual(expected: number | bigint): void {
+        if (typeof this.actual !== 'number' && typeof this.actual !== 'bigint') {
+            throw new Error(`Expected value to be a number`);
+        }
+
+        if (this.actual > expected) {
+            throw new Error(`Expected value to be less than or equal to ${expected}`);
+        }
+    }
+
     public toEqualAddress(address: Address): void {
-        if (this.actual instanceof Address) {
-            if (!this.actual.equals(address)) {
+        if (this.actual instanceof Uint8Array) {
+            if (!(this.actual as Address).equals(address)) {
                 throw new Error(
                     `Expected address "${address.toString()}", but got "${this.actual.toString()}"`,
                 );
