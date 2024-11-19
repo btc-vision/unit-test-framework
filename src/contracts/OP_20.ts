@@ -21,12 +21,12 @@ export interface BurnEvent {
 }
 
 export interface OP_20Interface extends ContractDetails {
-    readonly fileName: string;
+    readonly file: string;
     readonly decimals: number;
 }
 
 export class OP_20 extends ContractRuntime {
-    public readonly fileName: string;
+    public readonly file: string;
     public readonly decimals: number;
 
     protected readonly transferSelector: number = Number(
@@ -49,7 +49,7 @@ export class OP_20 extends ContractRuntime {
     constructor(details: OP_20Interface) {
         super(details);
 
-        this.fileName = details.fileName;
+        this.file = details.file;
         this.decimals = details.decimals;
 
         this.preserveState();
@@ -189,7 +189,9 @@ export class OP_20 extends ContractRuntime {
     }
 
     protected defineRequiredBytecodes(): void {
-        BytecodeManager.loadBytecode(`./bytecode/${this.fileName}.wasm`, this.address);
+        const path: string = this.file.includes('/') ? this.file : `./bytecode/${this.file}.wasm`;
+
+        BytecodeManager.loadBytecode(path, this.address);
     }
 
     protected handleError(error: Error): Error {
