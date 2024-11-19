@@ -98,10 +98,6 @@ export class ContractRuntime extends Logger {
         return this.states;
     }
 
-    public getDeploymentStates(): Map<bigint, bigint> {
-        return this.deploymentStates;
-    }
-
     public setStates(states: Map<bigint, bigint>): void {
         this.states = new Map(states);
     }
@@ -233,6 +229,10 @@ export class ContractRuntime extends Logger {
         this.deploymentStates = new Map(this.states);
 
         this.dispose();
+    }
+
+    public getDeploymentStates(): Map<bigint, bigint> {
+        return this.deploymentStates;
     }
 
     protected async execute(
@@ -583,11 +583,23 @@ export class ContractRuntime extends Logger {
     }
 
     private onInputsRequested(): Promise<Buffer> {
-        return Promise.resolve(Buffer.alloc(1));
+        const tx = Blockchain.transaction;
+
+        if (!tx) {
+            return Promise.resolve(Buffer.alloc(1));
+        } else {
+            return Promise.resolve(Buffer.from(tx.serializeInputs()));
+        }
     }
 
     private onOutputsRequested(): Promise<Buffer> {
-        return Promise.resolve(Buffer.alloc(1));
+        const tx = Blockchain.transaction;
+
+        if (!tx) {
+            return Promise.resolve(Buffer.alloc(1));
+        } else {
+            return Promise.resolve(Buffer.from(tx.serializeOutputs()));
+        }
     }
 
     private generateParams(): ContractParameters {

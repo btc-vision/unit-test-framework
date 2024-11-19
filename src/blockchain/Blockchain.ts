@@ -13,6 +13,7 @@ import {
 import { ContractRuntime } from '../opnet/modules/ContractRuntime.js';
 import { BytecodeManager } from '../opnet/modules/GetBytecode.js';
 import { RustContractBinding } from '../opnet/vm/RustContractBinding.js';
+import { Transaction } from './Transaction.js';
 
 class BlockchainBase extends Logger {
     public readonly logColor: string = '#8332ff';
@@ -25,7 +26,6 @@ class BlockchainBase extends Logger {
 
     private readonly enableDebug: boolean = false;
     private readonly contracts: AddressMap<ContractRuntime> = new AddressMap<ContractRuntime>();
-
     private readonly bindings: Map<bigint, RustContractBinding> = new Map<
         bigint,
         RustContractBinding
@@ -33,6 +33,16 @@ class BlockchainBase extends Logger {
 
     constructor(public readonly network: Network) {
         super();
+    }
+
+    private _transaction: Transaction | null = null;
+
+    public get transaction(): Transaction | null {
+        return this._transaction;
+    }
+
+    public set transaction(tx: Transaction | null) {
+        this._transaction = tx;
     }
 
     private _contractManager?: ContractManager;
@@ -173,6 +183,9 @@ class BlockchainBase extends Logger {
     }
 
     public dispose(): void {
+        // We remove the transaction data after the execution
+        Blockchain.transaction = null;
+
         for (const contract of this.contracts.values()) {
             contract.dispose.bind(contract)();
         }
