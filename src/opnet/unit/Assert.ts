@@ -106,6 +106,35 @@ export class Assert {
         }
     }
 
+    public static async throwsAsync(fn: () => Promise<void>, expectedError?: string | RegExp) {
+        let threw = false;
+        let error: unknown = null;
+        try {
+            await fn();
+        } catch (err) {
+            threw = true;
+            error = err;
+        }
+        if (!threw) {
+            throw new Error(`Expected function to throw an error, but it did not.`);
+        }
+        if (expectedError && error instanceof Error) {
+            if (typeof expectedError === 'string') {
+                Assert.equal(
+                    error.message,
+                    expectedError,
+                    `Expected error message to be '${expectedError}', but got '${error.message}'`,
+                );
+            } else if (expectedError instanceof RegExp) {
+                if (!expectedError.test(error.message)) {
+                    throw new Error(
+                        `Expected error message '${error.message}' to match pattern '${expectedError}'`,
+                    );
+                }
+            }
+        }
+    }
+    
     private static deepStrictEqual(actual: unknown, expected: unknown): boolean {
         if (actual === expected) return true;
         if (
