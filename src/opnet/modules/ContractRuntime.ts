@@ -264,6 +264,10 @@ export class ContractRuntime extends Logger {
             return undefined;
         });
 
+        if (response && response.length === 0) {
+            throw new Error('execution reverted: empty buffer returned');
+        }
+
         const usedGas = this.contract.getUsedGas() - usedGasBefore;
         return {
             response,
