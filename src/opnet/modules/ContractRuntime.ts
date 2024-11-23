@@ -25,6 +25,9 @@ export class ContractRuntime extends Logger {
     public address: Address;
     public readonly deployer: Address;
 
+    public loadedPointers: bigint = 0n;
+    public storedPointers: bigint = 0n;
+
     protected states: Map<bigint, bigint> = new Map();
     protected deploymentStates: Map<bigint, bigint> = new Map();
 
@@ -254,6 +257,9 @@ export class ContractRuntime extends Logger {
         const usedGasBefore = this.contract.getUsedGas();
         const statesBackup = new Map(this.states);
 
+        this.loadedPointers = 0n;
+        this.storedPointers = 0n;
+
         let error: Error | undefined;
         const response = await this.contract.execute(calldata).catch(async (e: unknown) => {
             error = (await e) as Error;
@@ -396,6 +402,8 @@ export class ContractRuntime extends Logger {
             this.log(`Attempting to load pointer ${pointer} - value ${value}`);
         }
 
+        this.loadedPointers++;
+
         const response: BinaryWriter = new BinaryWriter();
         response.writeU256(value);
 
@@ -412,6 +420,8 @@ export class ContractRuntime extends Logger {
         }
 
         this.states.set(pointer, value);
+
+        this.storedPointers++;
 
         const response: BinaryWriter = new BinaryWriter();
         response.writeBoolean(true);
@@ -606,6 +616,13 @@ export class ContractRuntime extends Logger {
         }
     }
 
+    private fakeLoad(): void {
+        let i = 0;
+        while (i < 5000000) {
+            i++;
+        }
+    }
+
     private generateParams(): ContractParameters {
         return {
             address: this.p2trAddress,
@@ -617,7 +634,12 @@ export class ContractRuntime extends Logger {
             deployContractAtAddress: this.deployContractAtAddress.bind(this),
             load: (data: Buffer) => {
                 return new Promise((resolve) => {
-                    resolve(this.load(data));
+                    if (Blockchain.simulateRealEnvironment) {
+                        this.fakeLoad();
+                        resolve(this.load(data));
+                    } else {
+                        resolve(this.load(data));
+                    }
                 });
             },
             nextPointerValueGreaterThan: (data: Buffer) => {
@@ -627,12 +649,22 @@ export class ContractRuntime extends Logger {
                     const valueAtLeast: bigint = reader.readU256();
                     const lte: boolean = reader.readBoolean();
 
-                    resolve(this.nextPointerValueGreaterThan(pointer, lte, valueAtLeast));
+                    if (Blockchain.simulateRealEnvironment) {
+                        this.fakeLoad();
+                        resolve(this.nextPointerValueGreaterThan(pointer, lte, valueAtLeast));
+                    } else {
+                        resolve(this.nextPointerValueGreaterThan(pointer, lte, valueAtLeast));
+                    }
                 });
             },
             store: (data: Buffer) => {
                 return new Promise((resolve) => {
-                    resolve(this.store(data));
+                    if (Blockchain.simulateRealEnvironment) {
+                        this.fakeLoad();
+                        resolve(this.store(data));
+                    } else {
+                        resolve(this.store(data));
+                    }
                 });
             },
             call: this.call.bind(this),

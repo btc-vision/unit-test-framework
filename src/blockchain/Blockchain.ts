@@ -23,6 +23,7 @@ class BlockchainBase extends Logger {
     public tracePointers: boolean = TRACE_POINTERS;
     public traceCalls: boolean = TRACE_CALLS;
     public traceDeployments: boolean = TRACE_DEPLOYMENTS;
+    public simulateRealEnvironment: boolean = false;
 
     private readonly enableDebug: boolean = false;
     private readonly contracts: AddressMap<ContractRuntime> = new AddressMap<ContractRuntime>();
