@@ -429,7 +429,7 @@ export class ContractRuntime extends Logger {
         return response.getBuffer();
     }
 
-    private sortBigint(a: bigint, b: bigint): number {
+    /*private sortBigint(a: bigint, b: bigint): number {
         return Number(a - b);
     }
 
@@ -501,7 +501,7 @@ export class ContractRuntime extends Logger {
         response.writeU256(pointerReturn);
 
         return response.getBuffer();
-    }
+    }*/
 
     private checkReentrancy(calls: AddressSet): void {
         if (DISABLE_REENTRANCY_GUARD) {
@@ -642,9 +642,11 @@ export class ContractRuntime extends Logger {
                     }
                 });
             },
-            nextPointerValueGreaterThan: (data: Buffer) => {
-                return new Promise((resolve) => {
-                    const reader = new BinaryReader(data);
+            nextPointerValueGreaterThan: (_data: Buffer) => {
+                return new Promise((_resolve) => {
+                    throw new Error('Not activated. Experimental feature.');
+
+                    /*const reader = new BinaryReader(data);
                     const pointer: bigint = reader.readU256();
                     const valueAtLeast: bigint = reader.readU256();
                     const lte: boolean = reader.readBoolean();
@@ -654,7 +656,7 @@ export class ContractRuntime extends Logger {
                         resolve(this.nextPointerValueGreaterThan(pointer, lte, valueAtLeast));
                     } else {
                         resolve(this.nextPointerValueGreaterThan(pointer, lte, valueAtLeast));
-                    }
+                    }*/
                 });
             },
             store: (data: Buffer) => {
