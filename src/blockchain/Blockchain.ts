@@ -157,9 +157,10 @@ class BlockchainBase extends Logger {
         );
 
         /** Generate contract segwit address */
-        const contractSegwitAddress = new Address(contractVirtualAddress);
-
-        return { contractAddress: contractSegwitAddress, virtualAddress: contractVirtualAddress };
+        return {
+            contractAddress: new Address(contractVirtualAddress),
+            virtualAddress: contractVirtualAddress,
+        };
     }
 
     public getContract(address: Address): ContractRuntime {
