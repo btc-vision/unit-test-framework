@@ -15,7 +15,7 @@ export class Assertion {
 
     public toEqual(expected: unknown): void {
         if (this.actual !== expected) {
-            throw new Error(`Expected "${String(expected)}", but got "${String(this.actual)}"`);
+            throw new Error(`Expected "${String(this.actual)}" to equal "${String(expected)}"`);
         }
     }
 

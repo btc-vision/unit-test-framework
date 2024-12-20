@@ -118,6 +118,27 @@ export class OP_20 extends ContractRuntime {
         }
     }
 
+    public async mintRaw(to: Address, amount: bigint): Promise<void> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.mintSelector);
+        calldata.writeAddress(to);
+        calldata.writeU256(amount);
+
+        const buf = calldata.getBuffer();
+        const result = await this.execute(buf, this.deployer, this.deployer);
+
+        const response = result.response;
+        if (!response) {
+            this.dispose();
+            throw result.error;
+        }
+
+        const reader = new BinaryReader(response);
+        if (!reader.readBoolean()) {
+            throw new Error('Mint failed');
+        }
+    }
+
     public async approve(owner: Address, spender: Address, amount: bigint): Promise<CallResponse> {
         const calldata = new BinaryWriter();
         calldata.writeSelector(this.approveSelector);
