@@ -131,10 +131,15 @@ export class ContractRuntime extends Logger {
         owner: Address = this.deployer,
         address: Address = this.address,
     ): Promise<void> {
+        if (this.transactionId.length !== 32) {
+            throw new Error('Transaction ID must be 32 bytes long');
+        }
+
         const writer = new BinaryWriter();
         writer.writeAddress(msgSender);
         writer.writeAddress(txOrigin); // "leftmost thing in the call chain"
         writer.writeBytes(this.transactionId); // "transaction id"
+
         writer.writeU256(currentBlock);
         writer.writeAddress(owner);
         writer.writeAddress(address);
