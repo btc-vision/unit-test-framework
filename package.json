@@ -23,7 +23,7 @@
     }
   },
   "dependencies": {
-    "@btc-vision/bitcoin": "^6.3.0",
+    "@btc-vision/bitcoin": "^6.3.1",
     "@btc-vision/logger": "^1.0.6",
     "@btc-vision/op-vm": "^0.2.5",
     "@btc-vision/transaction": "^1.1.13",
