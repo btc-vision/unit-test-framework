@@ -31,7 +31,7 @@ export class ContractRuntime extends Logger {
     protected states: Map<bigint, bigint> = new Map();
     protected deploymentStates: Map<bigint, bigint> = new Map();
 
-    protected shouldPreserveState: boolean = false;
+    protected shouldPreserveState: boolean = true;
     protected events: NetEvent[] = [];
 
     protected readonly gasLimit: bigint = 100_000_000_000n;
@@ -95,6 +95,10 @@ export class ContractRuntime extends Logger {
 
     public preserveState(): void {
         this.shouldPreserveState = true;
+    }
+
+    public doNotPreserveState(): void {
+        this.shouldPreserveState = false;
     }
 
     public getStates(): Map<bigint, bigint> {
