@@ -130,8 +130,6 @@ class BlockchainBase extends Logger {
 
     public register(contract: ContractRuntime): void {
         if (this.contracts.has(contract.address)) {
-            console.log(this.contracts);
-
             throw new Error(
                 `Contract already registered at address ${contract.address.p2tr(this.network)}`,
             );
