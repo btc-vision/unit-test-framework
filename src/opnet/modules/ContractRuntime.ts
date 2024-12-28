@@ -17,6 +17,7 @@ import { CallResponse } from '../interfaces/CallResponse.js';
 import { ContractDetails } from '../interfaces/ContractDetails.js';
 import { ContractParameters, RustContract } from '../vm/RustContract.js';
 import { BytecodeManager } from './GetBytecode.js';
+import { FastBigIntMap } from './FastMap.js';
 
 export class ContractRuntime extends Logger {
     public readonly logColor: string = '#39b2f3';
@@ -28,8 +29,8 @@ export class ContractRuntime extends Logger {
     public loadedPointers: bigint = 0n;
     public storedPointers: bigint = 0n;
 
-    protected states: Map<bigint, bigint> = new Map();
-    protected deploymentStates: Map<bigint, bigint> = new Map();
+    protected states: FastBigIntMap = new FastBigIntMap();
+    protected deploymentStates: FastBigIntMap = new FastBigIntMap();
 
     protected shouldPreserveState: boolean = true;
     protected events: NetEvent[] = [];
@@ -39,7 +40,7 @@ export class ContractRuntime extends Logger {
     protected readonly abiCoder = new ABICoder();
 
     private callStack: AddressSet = new AddressSet();
-    private statesBackup: Map<bigint, bigint> = new Map();
+    private statesBackup: FastBigIntMap = new FastBigIntMap();
 
     private readonly potentialBytecode?: Buffer;
     private readonly deploymentCalldata?: Buffer;
@@ -101,12 +102,12 @@ export class ContractRuntime extends Logger {
         this.shouldPreserveState = false;
     }
 
-    public getStates(): Map<bigint, bigint> {
+    public getStates(): FastBigIntMap {
         return this.states;
     }
 
-    public setStates(states: Map<bigint, bigint>): void {
-        this.states = new Map(states);
+    public setStates(states: FastBigIntMap): void {
+        this.states = new FastBigIntMap(states);
     }
 
     public delete(): void {
@@ -154,11 +155,11 @@ export class ContractRuntime extends Logger {
     }
 
     public backupStates(): void {
-        this.statesBackup = new Map(this.states);
+        this.statesBackup = new FastBigIntMap(this.states);
     }
 
     public restoreStates(): void {
-        this.states = new Map(this.statesBackup);
+        this.states = new FastBigIntMap(this.statesBackup);
     }
 
     public async onCall(
@@ -238,12 +239,12 @@ export class ContractRuntime extends Logger {
             throw this.handleError(error);
         }
 
-        this.deploymentStates = new Map(this.states);
+        this.deploymentStates = new FastBigIntMap(this.states);
 
         this.dispose();
     }
 
-    public getDeploymentStates(): Map<bigint, bigint> {
+    public getDeploymentStates(): FastBigIntMap {
         return this.deploymentStates;
     }
 
@@ -264,7 +265,7 @@ export class ContractRuntime extends Logger {
         }
 
         const usedGasBefore = this.contract.getUsedGas();
-        const statesBackup = new Map(this.states);
+        const statesBackup = new FastBigIntMap(this.states);
 
         this.loadedPointers = 0n;
         this.storedPointers = 0n;
@@ -310,7 +311,7 @@ export class ContractRuntime extends Logger {
     protected loadContract(): void {
         try {
             if (!this.shouldPreserveState) {
-                this.states = new Map(this.deploymentStates);
+                this.states = new FastBigIntMap(this.deploymentStates);
             }
 
             try {
@@ -340,7 +341,7 @@ export class ContractRuntime extends Logger {
     }
 
     private restoreStatesToDeployment(): void {
-        this.states = new Map(this.deploymentStates);
+        this.states = new FastBigIntMap(this.deploymentStates);
     }
 
     private async deployContractAtAddress(data: Buffer): Promise<Buffer | Uint8Array> {

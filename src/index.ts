@@ -25,3 +25,5 @@ export * from './opnet/vm/RustContractBinding.js';
 /** Runtime */
 export * from './opnet/modules/ContractRuntime.js';
 export * from './blockchain/Transaction.js';
+
+export * from './opnet/modules/FastMap.js';
