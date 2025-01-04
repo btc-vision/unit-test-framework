@@ -46,6 +46,10 @@ export class OP_20 extends ContractRuntime {
         `0x${this.abiCoder.encodeSelector('approve')}`,
     );
 
+    protected readonly airdropSelector: number = Number(
+        `0x${this.abiCoder.encodeSelector('airdrop')}`,
+    );
+
     constructor(details: OP_20Interface) {
         super(details);
 
@@ -116,6 +120,23 @@ export class OP_20 extends ContractRuntime {
         if (!reader.readBoolean()) {
             throw new Error('Mint failed');
         }
+    }
+
+    public async airdrop(map: AddressMap<bigint>): Promise<CallResponse> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.airdropSelector);
+        calldata.writeAddressValueTupleMap(map);
+
+        const buf = calldata.getBuffer();
+        const result = await this.execute(buf, this.deployer, this.deployer);
+
+        const response = result.response;
+        if (!response) {
+            this.dispose();
+            throw result.error;
+        }
+
+        return result;
     }
 
     public async mintRaw(to: Address, amount: bigint): Promise<void> {
