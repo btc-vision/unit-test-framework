@@ -30,10 +30,16 @@ export class OP_20 extends ContractRuntime {
     public readonly decimals: number;
 
     protected readonly transferSelector: number = Number(
-        `0x${this.abiCoder.encodeSelector('transfer')}`,
+        `0x${this.abiCoder.encodeSelector('transfer(address,uint256)')}`,
     );
 
-    protected readonly mintSelector: number = Number(`0x${this.abiCoder.encodeSelector('mint')}`);
+    protected readonly transferFromSelector: number = Number(
+        `0x${this.abiCoder.encodeSelector('transferFrom(address,address,uint256)')}`,
+    );
+
+    protected readonly mintSelector: number = Number(
+        `0x${this.abiCoder.encodeSelector('mint(address,uint256)')}`,
+    );
     protected readonly balanceOfSelector: number = Number(
         `0x${this.abiCoder.encodeSelector('balanceOf')}`,
     );
@@ -43,11 +49,15 @@ export class OP_20 extends ContractRuntime {
     );
 
     protected readonly approveSelector: number = Number(
-        `0x${this.abiCoder.encodeSelector('approve')}`,
+        `0x${this.abiCoder.encodeSelector('approve(address,uint256)')}`,
     );
 
     protected readonly airdropSelector: number = Number(
-        `0x${this.abiCoder.encodeSelector('airdrop')}`,
+        `0x${this.abiCoder.encodeSelector('airdrop(tuple(address,uint256))')}`,
+    );
+
+    protected readonly allowanceSelector: number = Number(
+        `0x${this.abiCoder.encodeSelector('allowance(address,address)')}`,
     );
 
     constructor(details: OP_20Interface) {
@@ -120,6 +130,47 @@ export class OP_20 extends ContractRuntime {
         if (!reader.readBoolean()) {
             throw new Error('Mint failed');
         }
+    }
+
+    public async transferFrom(from: Address, to: Address, amount: bigint): Promise<void> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.transferFromSelector);
+        calldata.writeAddress(from);
+        calldata.writeAddress(to);
+        calldata.writeU256(amount);
+
+        const buf = calldata.getBuffer();
+        const result = await this.execute(buf, from, from);
+
+        const response = result.response;
+        if (!response) {
+            this.dispose();
+            throw result.error;
+        }
+
+        const reader = new BinaryReader(response);
+        if (!reader.readBoolean()) {
+            throw new Error('Transfer failed');
+        }
+    }
+
+    public async allowance(owner: Address, spender: Address): Promise<bigint> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.allowanceSelector);
+        calldata.writeAddress(owner);
+        calldata.writeAddress(spender);
+
+        const buf = calldata.getBuffer();
+        const result = await this.execute(buf);
+
+        const response = result.response;
+        if (!response) {
+            this.dispose();
+            throw result.error;
+        }
+
+        const reader = new BinaryReader(response);
+        return reader.readU256();
     }
 
     public async airdrop(map: AddressMap<bigint>): Promise<CallResponse> {
