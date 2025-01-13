@@ -41,7 +41,7 @@ export class OP_20 extends ContractRuntime {
         `0x${this.abiCoder.encodeSelector('mint(address,uint256)')}`,
     );
     protected readonly balanceOfSelector: number = Number(
-        `0x${this.abiCoder.encodeSelector('balanceOf')}`,
+        `0x${this.abiCoder.encodeSelector('balanceOf(address)')}`,
     );
 
     protected readonly totalSupplySelector: number = Number(
