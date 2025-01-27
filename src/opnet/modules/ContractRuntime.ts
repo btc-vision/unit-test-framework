@@ -439,80 +439,6 @@ export class ContractRuntime extends Logger {
         return response.getBuffer();
     }
 
-    /*private sortBigint(a: bigint, b: bigint): number {
-        return Number(a - b);
-    }
-
-    private getBestNextPointerValueGreaterThan(
-        pointer: bigint,
-        lte: boolean,
-        valueAtLeast: bigint,
-    ): bigint {
-        // Masks to separate the token (bits 80-239) and the word position (bits 0-79)
-        const tokenMask = ((1n << 160n) - 1n) << 80n; // Bits 80 to 239
-        const wordPosMask = (1n << 80n) - 1n; // Bits 0 to 79
-
-        // Extract the token and word position from the pointer
-        const pointerToken = (pointer & tokenMask) >> 80n;
-        const pointerWordPos = pointer & wordPosMask;
-
-        // Convert keys to an array
-        const keys = Array.from(this.states.keys());
-
-        // Filter keys to only those with the same token
-        const filteredKeys = keys.filter((key) => {
-            const keyToken = (key & tokenMask) >> 80n;
-            return keyToken === pointerToken;
-        });
-
-        // Sort the filtered keys based on the word position and lte
-        if (lte) {
-            // Sort in descending order to find the largest key with wordPos <= pointer's wordPos
-            filteredKeys.sort((a, b) => this.sortBigint(b & wordPosMask, a & wordPosMask));
-        } else {
-            // Sort in ascending order to find the smallest key with wordPos > pointer's wordPos
-            filteredKeys.sort((a, b) => this.sortBigint(a & wordPosMask, b & wordPosMask));
-        }
-
-        // Iterate over the sorted keys
-        for (const key of filteredKeys) {
-            const keyWordPos = key & wordPosMask;
-
-            // Apply lte condition based on the word position comparison
-            if (lte) {
-                if (keyWordPos > pointerWordPos) {
-                    continue;
-                }
-            } else {
-                if (keyWordPos <= pointerWordPos) {
-                    continue;
-                }
-            }
-
-            // Retrieve the value associated with the key
-            const value = this.states.get(key);
-
-            // Check if the value is greater than zero
-            if (value !== undefined && value > valueAtLeast) {
-                return key;
-            }
-        }
-
-        return 0n;
-    }
-
-    private nextPointerValueGreaterThan(
-        pointer: bigint,
-        lte: boolean,
-        valueAtLeast: bigint,
-    ): Buffer | Uint8Array {
-        const pointerReturn = this.getBestNextPointerValueGreaterThan(pointer, lte, valueAtLeast);
-        const response: BinaryWriter = new BinaryWriter();
-        response.writeU256(pointerReturn);
-
-        return response.getBuffer();
-    }*/
-
     private checkReentrancy(calls: AddressSet): void {
         if (DISABLE_REENTRANCY_GUARD) {
             return;
@@ -650,23 +576,6 @@ export class ContractRuntime extends Logger {
                     } else {
                         resolve(this.load(data));
                     }
-                });
-            },
-            nextPointerValueGreaterThan: (_data: Buffer) => {
-                return new Promise((_resolve) => {
-                    throw new Error('Not activated. Experimental feature.');
-
-                    /*const reader = new BinaryReader(data);
-                    const pointer: bigint = reader.readU256();
-                    const valueAtLeast: bigint = reader.readU256();
-                    const lte: boolean = reader.readBoolean();
-
-                    if (Blockchain.simulateRealEnvironment) {
-                        this.fakeLoad();
-                        resolve(this.nextPointerValueGreaterThan(pointer, lte, valueAtLeast));
-                    } else {
-                        resolve(this.nextPointerValueGreaterThan(pointer, lte, valueAtLeast));
-                    }*/
                 });
             },
             store: (data: Buffer) => {

@@ -1,6 +1,6 @@
 import { BitcoinNetworkRequest, CallResponse, ContractManager } from '@btc-vision/op-vm';
-import { Blockchain } from '../../blockchain/Blockchain.js';
 import { RustContractBinding } from './RustContractBinding.js';
+import { Blockchain } from '../../blockchain/Blockchain.js';
 
 export interface ContractParameters extends Omit<RustContractBinding, 'id'> {
     readonly address: string;
@@ -14,7 +14,7 @@ export interface ContractParameters extends Omit<RustContractBinding, 'id'> {
 }
 
 export class RustContract {
-    private refCounts: Map<number, number> = new Map();
+    private refCounts: Map<number, number> = new Map<number, number>();
 
     private readonly enableDebug: boolean = false;
     private readonly enableDisposeLog: boolean = false;
@@ -41,7 +41,6 @@ export class RustContract {
             Blockchain.registerBinding({
                 id: this._id,
                 load: this.params.load,
-                nextPointerValueGreaterThan: this.params.nextPointerValueGreaterThan,
                 store: this.params.store,
                 call: this.params.call,
                 deployContractAtAddress: this.params.deployContractAtAddress,
@@ -130,9 +129,10 @@ export class RustContract {
             const data = await this.__retain(pointer);
 
             const resp = await this.contractManager.call(this.id, 'execute', [data]);
-            this.gasCallback(resp.gasUsed, 'execute');
+            const gasUsed = this.contractManager.getUsedGas(this.id);
+            this.gasCallback(gasUsed, 'execute');
 
-            const result = resp.result.filter((n) => n !== undefined);
+            const result = resp.filter((n) => n !== undefined);
             const finalResult = this.__liftTypedArray(result[0] >>> 0);
 
             await this.__release(data);
@@ -153,8 +153,10 @@ export class RustContract {
             const data = await this.__lowerTypedArray(13, 0, buffer);
             if (data == null) throw new Error('Data cannot be null');
 
-            const resp = await this.contractManager.call(this.id, 'setEnvironment', [data]);
-            this.gasCallback(resp.gasUsed, 'setEnvironment');
+            await this.contractManager.call(this.id, 'setEnvironment', [data]);
+            const gasUsed = this.contractManager.getUsedGas(this.id);
+
+            this.gasCallback(gasUsed, 'setEnvironment');
         } catch (e) {
             if (this.enableDebug) console.log('Error in setEnvironment', e);
 
@@ -171,9 +173,14 @@ export class RustContract {
             if (data == null) throw new Error('Data cannot be null');
 
             const resp = await this.contractManager.call(this.id, 'onDeploy', [data]);
-            this.gasCallback(resp.gasUsed, 'onDeploy');
+            const gasUsed = this.contractManager.getUsedGas(this.id);
 
-            return resp;
+            this.gasCallback(gasUsed, 'onDeploy');
+
+            return {
+                result: resp.filter((n) => n !== undefined),
+                gasUsed: gasUsed,
+            };
         } catch (e) {
             if (this.enableDebug) console.log('Error in onDeployment', e);
 
@@ -388,9 +395,11 @@ export class RustContract {
         let finalResult: number;
         try {
             const resp = await this.contractManager.call(this.id, '__pin', [pointer]);
-            this.gasCallback(resp.gasUsed, '__pin');
+            const gasUsed = this.contractManager.getUsedGas(this.id);
 
-            const result = resp.result.filter((n) => n !== undefined);
+            this.gasCallback(gasUsed, '__pin');
+
+            const result = resp.filter((n) => n !== undefined);
             finalResult = result[0];
         } catch (e) {
             if (this.enableDebug) console.log('Error in __pin', e);
@@ -408,9 +417,11 @@ export class RustContract {
         let finalResult: number;
         try {
             const resp = await this.contractManager.call(this.id, '__unpin', [pointer]);
-            this.gasCallback(resp.gasUsed, '__unpin');
+            const gasUsed = this.contractManager.getUsedGas(this.id);
 
-            const result = resp.result.filter((n) => n !== undefined);
+            this.gasCallback(gasUsed, '__unpin');
+
+            const result = resp.filter((n) => n !== undefined);
             finalResult = result[0];
         } catch (e) {
             if (this.enableDebug) console.log('Error in __unpin', e);
@@ -428,9 +439,11 @@ export class RustContract {
         let finalResult;
         try {
             const resp = await this.contractManager.call(this.id, '__new', [size, align]);
-            this.gasCallback(resp.gasUsed, '__new');
+            const gasUsed = this.contractManager.getUsedGas(this.id);
 
-            const result = resp.result.filter((n) => n !== undefined);
+            this.gasCallback(gasUsed, '__new');
+
+            const result = resp.filter((n) => n !== undefined);
             finalResult = result[0];
         } catch (e) {
             if (this.enableDebug) console.log('Error in __new', e);
