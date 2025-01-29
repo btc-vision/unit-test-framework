@@ -45,6 +45,8 @@ export class ContractRuntime extends Logger {
     private readonly potentialBytecode?: Buffer;
     private readonly deploymentCalldata?: Buffer;
 
+    private readonly isDebugMode = true;
+
     protected constructor(details: ContractDetails) {
         super();
 
@@ -565,6 +567,7 @@ export class ContractRuntime extends Logger {
             bytecode: this.bytecode,
             gasLimit: this.gasLimit,
             network: this.getNetwork(),
+            isDebugMode: this.isDebugMode,
             gasCallback: this.onGas.bind(this),
             contractManager: Blockchain.contractManager,
             deployContractAtAddress: this.deployContractAtAddress.bind(this),

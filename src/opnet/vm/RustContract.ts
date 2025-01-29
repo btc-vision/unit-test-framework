@@ -8,6 +8,7 @@ export interface ContractParameters extends Omit<RustContractBinding, 'id'> {
     readonly bytecode: Buffer;
     readonly gasLimit: bigint;
     readonly network: BitcoinNetworkRequest;
+    readonly isDebugMode: boolean;
     readonly gasCallback: (gas: bigint, method: string) => void;
 
     readonly contractManager: ContractManager;
@@ -56,6 +57,7 @@ export class RustContract {
                 this.params.bytecode,
                 this.params.gasLimit,
                 this.params.network,
+                this.params.isDebugMode,
             );
 
             this._instantiated = true;
