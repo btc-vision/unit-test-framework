@@ -106,8 +106,6 @@ export class RustContract {
 
         delete this._params;
 
-        this.refCounts.clear();
-
         if (this.disposed) return;
         this._disposed = true;
 
@@ -128,18 +126,13 @@ export class RustContract {
 
         try {
             const pointer = await this.__lowerTypedArray(13, 0, buffer);
-            const data = await this.__retain(pointer);
 
-            const resp = await this.contractManager.call(this.id, 'execute', [data]);
+            const resp = await this.contractManager.call(this.id, 'execute', [pointer]);
             const gasUsed = this.contractManager.getUsedGas(this.id);
             this.gasCallback(gasUsed, 'execute');
 
             const result = resp.filter((n) => n !== undefined);
-            const finalResult = this.__liftTypedArray(result[0] >>> 0);
-
-            await this.__release(data);
-
-            return finalResult;
+            return this.__liftTypedArray(result[0] >>> 0);
         } catch (e) {
             if (this.enableDebug) console.log('Error in execute', e);
 
@@ -240,38 +233,6 @@ export class RustContract {
         }
     }
 
-    private async __retain(pointer: number): Promise<number> {
-        if (this.enableDebug) console.log('Retaining pointer', pointer);
-
-        if (pointer) {
-            const refcount = this.refCounts.get(pointer);
-            if (refcount) {
-                this.refCounts.set(pointer, refcount + 1);
-            } else {
-                const pinned = await this.__pin(pointer);
-                this.refCounts.set(pinned, 1);
-            }
-        }
-
-        return pointer;
-    }
-
-    private async __release(pointer: number): Promise<void> {
-        if (this.enableDebug) console.log('Releasing pointer', pointer);
-
-        if (pointer) {
-            const refcount = this.refCounts.get(pointer);
-            if (refcount === 1) {
-                await this.__unpin(pointer);
-                this.refCounts.delete(pointer);
-            } else if (refcount) {
-                this.refCounts.set(pointer, refcount - 1);
-            } else {
-                throw Error(`invalid refcount '${refcount}' for reference '${pointer}'`);
-            }
-        }
-    }
-
     private __liftString(pointer: number): string | null {
         if (this.enableDebug) console.log('Lifting string', pointer);
 
@@ -343,7 +304,7 @@ export class RustContract {
 
         // Allocate memory for the array
         const newPointer = await this.__new(bufferSize, 1);
-        const buffer = (await this.__pin(newPointer)) >>> 0;
+        const buffer = newPointer >>> 0;
         const header = (await this.__new(12, id)) >>> 0;
 
         // Set the buffer and length in the header
@@ -358,7 +319,6 @@ export class RustContract {
         const valuesBuffer = Buffer.from(values.buffer, values.byteOffset, values.byteLength);
         this.contractManager.writeMemory(this.id, BigInt(buffer), valuesBuffer);
 
-        await this.__unpin(buffer);
         return header;
     }
 
@@ -389,50 +349,6 @@ export class RustContract {
         } catch {}
 
         return new Error(`Execution aborted: ${message} at ${fileName}:${line}:${column}`);
-    }
-
-    private async __pin(pointer: number): Promise<number> {
-        if (this.enableDebug) console.log('Pinning pointer', pointer);
-
-        let finalResult: number;
-        try {
-            const resp = await this.contractManager.call(this.id, '__pin', [pointer]);
-            const gasUsed = this.contractManager.getUsedGas(this.id);
-
-            this.gasCallback(gasUsed, '__pin');
-
-            const result = resp.filter((n) => n !== undefined);
-            finalResult = result[0];
-        } catch (e) {
-            if (this.enableDebug) console.log('Error in __pin', e);
-
-            const error = e as Error;
-            throw this.getError(error);
-        }
-
-        return finalResult;
-    }
-
-    private async __unpin(pointer: number): Promise<number> {
-        if (this.enableDebug) console.log('Unpinning pointer', pointer);
-
-        let finalResult: number;
-        try {
-            const resp = await this.contractManager.call(this.id, '__unpin', [pointer]);
-            const gasUsed = this.contractManager.getUsedGas(this.id);
-
-            this.gasCallback(gasUsed, '__unpin');
-
-            const result = resp.filter((n) => n !== undefined);
-            finalResult = result[0];
-        } catch (e) {
-            if (this.enableDebug) console.log('Error in __unpin', e);
-
-            const error = e as Error;
-            throw this.getError(error);
-        }
-
-        return finalResult;
     }
 
     private async __new(size: number, align: number): Promise<number> {
