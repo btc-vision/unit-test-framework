@@ -51,19 +51,26 @@ export class RustContract {
                 outputs: this.params.outputs,
             });
 
-            this.contractManager.instantiate(
-                this._id,
-                this.params.address,
-                this.params.bytecode,
-                this.params.gasLimit,
-                this.params.network,
-                this.params.isDebugMode,
-            );
-
-            this._instantiated = true;
+            this.instantiate();
         }
 
         return this._id;
+    }
+
+    public instantiate(): void {
+        if(this._id == null) throw new Error('Contract is not instantiated');
+        if(this._instantiated) return;
+
+        this.contractManager.instantiate(
+            this._id,
+            this.params.address,
+            this.params.bytecode,
+            this.params.gasLimit,
+            this.params.network,
+            this.params.isDebugMode,
+        );
+
+        this._instantiated = true;
     }
 
     private _instantiated: boolean = false;
