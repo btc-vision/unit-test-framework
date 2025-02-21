@@ -361,18 +361,16 @@ export class ContractRuntime extends Logger {
             );
         }
 
-        const deployResult = Blockchain.generateAddress(this.address, salt, address);
-        if (this.deployedContracts.has(deployResult.contractAddress)) {
-            throw new Error('Contract already deployed');
-        }
+        const deployedContractAddress = Blockchain.generateAddress(this.address, salt, address);
+        if (this.deployedContracts.has(deployedContractAddress)) {
+            const response = new BinaryWriter(32);
 
-        if (address === this.address) {
-            throw new Error('Cannot deploy the same contract');
+            return response.getBuffer();
         }
 
         const requestedContractBytecode = BytecodeManager.getBytecode(address) as Buffer;
         const newContract: ContractRuntime = new ContractRuntime({
-            address: deployResult.contractAddress,
+            address: deployedContractAddress,
             deployer: this.address,
             gasLimit: this.gasLimit,
             bytecode: requestedContractBytecode,
@@ -382,7 +380,7 @@ export class ContractRuntime extends Logger {
 
         if (Blockchain.traceDeployments) {
             this.info(
-                `Deploying contract at ${deployResult.contractAddress.p2tr(Blockchain.network)} - virtual address 0x${deployResult.virtualAddress.toString('hex')}`,
+                `Deploying contract at ${deployedContractAddress.p2tr(Blockchain.network)}`,
             );
         }
 
@@ -392,15 +390,14 @@ export class ContractRuntime extends Logger {
 
         if (Blockchain.traceDeployments) {
             this.log(
-                `Deployed contract at ${deployResult.contractAddress.p2tr(Blockchain.network)}`,
+                `Deployed contract at ${deployedContractAddress.p2tr(Blockchain.network)}`,
             );
         }
 
-        this.deployedContracts.set(deployResult.contractAddress, this.bytecode);
+        this.deployedContracts.set(deployedContractAddress, this.bytecode);
 
         const response = new BinaryWriter();
-        response.writeBytes(deployResult.virtualAddress);
-        response.writeAddress(deployResult.contractAddress);
+        response.writeAddress(deployedContractAddress);
 
         return response.getBuffer();
     }
