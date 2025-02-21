@@ -350,7 +350,7 @@ export class ContractRuntime extends Logger {
         const reader = new BinaryReader(data);
 
         const address: Address = reader.readAddress();
-        const salt: Buffer = Buffer.from(reader.readBytes(32)); //Buffer.from(`${reader.readU256().toString(16)}`, 'hex');
+        const salt: Buffer = Buffer.from(reader.readBytes(32));
         const saltBig = BigInt(
             '0x' + salt.reduce((acc, byte) => acc + byte.toString(16).padStart(2, '0'), ''),
         );
@@ -363,7 +363,7 @@ export class ContractRuntime extends Logger {
 
         const deployedContractAddress = Blockchain.generateAddress(this.address, salt, address);
         if (this.deployedContracts.has(deployedContractAddress)) {
-            const response = new BinaryWriter(32);
+            const response = new BinaryWriter(32 + 4);
 
             return response.getBuffer();
         }
@@ -379,9 +379,7 @@ export class ContractRuntime extends Logger {
         newContract.preserveState();
 
         if (Blockchain.traceDeployments) {
-            this.info(
-                `Deploying contract at ${deployedContractAddress.p2tr(Blockchain.network)}`,
-            );
+            this.info(`Deploying contract at ${deployedContractAddress.p2tr(Blockchain.network)}`);
         }
 
         Blockchain.register(newContract);
@@ -389,15 +387,14 @@ export class ContractRuntime extends Logger {
         await newContract.init();
 
         if (Blockchain.traceDeployments) {
-            this.log(
-                `Deployed contract at ${deployedContractAddress.p2tr(Blockchain.network)}`,
-            );
+            this.log(`Deployed contract at ${deployedContractAddress.p2tr(Blockchain.network)}`);
         }
 
         this.deployedContracts.set(deployedContractAddress, this.bytecode);
 
         const response = new BinaryWriter();
         response.writeAddress(deployedContractAddress);
+        response.writeU32(requestedContractBytecode.byteLength);
 
         return response.getBuffer();
     }
