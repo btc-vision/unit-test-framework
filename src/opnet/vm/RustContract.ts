@@ -58,8 +58,8 @@ export class RustContract {
     }
 
     public instantiate(): void {
-        if(this._id == null) throw new Error('Contract is not instantiated');
-        if(this._instantiated) return;
+        if (this._id == null) throw new Error('Contract is not instantiated');
+        if (this._instantiated) return;
 
         this.contractManager.instantiate(
             this._id,
@@ -337,25 +337,61 @@ export class RustContract {
         if (this.enableDebug) console.log('Getting error', err);
 
         const msg = err.message;
-        if (msg.includes('Execution aborted') && !msg.includes('Execution aborted:')) {
-            return this.abort();
+        if (msg.includes('Execution reverted') && !msg.includes('Execution reverted:')) {
+            return this.revert();
         } else {
             return err;
         }
     }
 
-    private abort(): Error {
-        const abortData = this.contractManager.getAbortData(this.id);
-        const message = this.__liftString(abortData.message);
-        const fileName = this.__liftString(abortData.fileName);
-        const line = abortData.line;
-        const column = abortData.column;
+    private revert(): Error {
+        const revertData = this.contractManager.getRevertData(this.id).data;
 
         try {
             this.dispose();
         } catch {}
 
-        return new Error(`Execution aborted: ${message} at ${fileName}:${line}:${column}`);
+        if (revertData.length === 0) {
+            return new Error(`Execution reverted`);
+        } else {
+            const revertDataBytes = Uint8Array.from(revertData);
+            if (this.startsWithErrorSelector(revertData, revertDataBytes)) {
+                const decoder = new TextDecoder();
+                const revertMessage = decoder.decode(revertDataBytes.slice(6));
+                return new Error(`Execution reverted: ${revertMessage}`);
+            } else {
+                return new Error(`Execution reverted: 0x${this.bytesToHexString(revertDataBytes)}`);
+            }
+        }
+    }
+
+    private startsWithErrorSelector(
+        revertData: Array<number>,
+        revertDataBytes: Uint8Array<ArrayBuffer>,
+    ) {
+        const errorSelectorBytes = Uint8Array.from([0x63, 0x73, 0x9d, 0x5c]);
+        return (
+            revertData.length >= 4 &&
+            this.areBytesEqual(revertDataBytes.slice(0, 4), errorSelectorBytes)
+        );
+    }
+
+    private areBytesEqual(a: Uint8Array, b: Uint8Array) {
+        if (a.length !== b.length) return false;
+
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bytesToHexString(byteArray: Uint8Array): string {
+        return Array.from(byteArray, function (byte) {
+            return ('0' + (byte & 0xff).toString(16)).slice(-2);
+        }).join('');
     }
 
     private async __new(size: number, align: number): Promise<number> {
