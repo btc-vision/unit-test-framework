@@ -128,17 +128,15 @@ export class RustContract {
         }
     }
 
-    public async execute(buffer: Uint8Array | Buffer): Promise<Uint8Array> {
-        if (this.enableDebug) console.log('execute', buffer);
+    public async execute(calldata: Uint8Array | Buffer): Promise<Uint8Array> {
+        if (this.enableDebug) console.log('execute', calldata);
 
         try {
-            const pointer = await this.__lowerTypedArray(13, 0, buffer);
-
-            const resp = await this.contractManager.call(this.id, 'execute', [pointer]);
+            const response = await this.contractManager.execute(this.id, Buffer.from(calldata));
             const gasUsed = this.contractManager.getUsedGas(this.id);
             this.gasCallback(gasUsed, 'execute');
 
-            const result = resp.filter((n) => n !== undefined);
+            const result = response.filter((n) => n !== undefined);
             return this.__liftTypedArray(result[0] >>> 0);
         } catch (e) {
             if (this.enableDebug) console.log('Error in execute', e);
