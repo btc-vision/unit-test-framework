@@ -450,7 +450,12 @@ export class ContractRuntime extends Logger {
     }
 
     private async call(data: Buffer): Promise<Buffer | Uint8Array> {
+        if (!this._contract) {
+            throw new Error('Contract not initialized');
+        }
+
         const reader = new BinaryReader(data);
+        const remainingGas: bigint = reader.readU64();
         const contractAddress: Address = reader.readAddress();
         const calldata: Uint8Array = reader.readBytesWithLength();
 
@@ -462,13 +467,16 @@ export class ContractRuntime extends Logger {
             this.info(`Attempting to call contract ${contractAddress.p2tr(Blockchain.network)}`);
         }
 
+        console.log(remainingGas, this.gasUsed);
+
         const contract: ContractRuntime = Blockchain.getContract(contractAddress);
         const code = contract.bytecode;
+
         const ca = new ContractRuntime({
             address: contractAddress,
             deployer: contract.deployer,
             bytecode: code,
-            gasLimit: contract.gasLimit,
+            gasLimit: remainingGas,
         });
 
         ca.preserveState();
