@@ -282,12 +282,12 @@ export class ContractRuntime extends Logger {
             return undefined;
         });
 
-        if (response && response.status != 0) {
+        if (response && response.status !== 0) {
             throw this.contract.getRevertError();
         }
 
-        if (response && response.data.length === 0) {
-            throw new Error('execution reverted: empty buffer returned');
+        if (error) {
+            throw error;
         }
 
         const usedGas = this.contract.getUsedGas() - usedGasBefore;
@@ -395,6 +395,8 @@ export class ContractRuntime extends Logger {
         }
 
         this.deployedContracts.set(deployedContractAddress, this.bytecode);
+
+        console.log('add', deployedContractAddress);
 
         const response = new BinaryWriter();
         response.writeAddress(deployedContractAddress);
