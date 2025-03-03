@@ -7,8 +7,8 @@ export const NETWORK: Network = networks.regtest;
 export const MAX_CALL_STACK_DEPTH: number = 20;
 
 // Trace flags
-export const TRACE_GAS: boolean = true;
-export const TRACE_POINTERS: boolean = true;
-export const TRACE_CALLS: boolean = true;
-export const TRACE_DEPLOYMENTS: boolean = true;
+export const TRACE_GAS: boolean = false;
+export const TRACE_POINTERS: boolean = false;
+export const TRACE_CALLS: boolean = false;
+export const TRACE_DEPLOYMENTS: boolean = false;
 export const DISABLE_REENTRANCY_GUARD: boolean = true;
