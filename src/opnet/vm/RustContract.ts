@@ -1,4 +1,4 @@
-import { BitcoinNetworkRequest, CallResponse, ContractManager } from '@btc-vision/op-vm';
+import { BitcoinNetworkRequest, CallResponse, ContractManager, ExitDataResponse } from '@btc-vision/op-vm';
 import { RustContractBinding } from './RustContractBinding.js';
 import { Blockchain } from '../../blockchain/Blockchain.js';
 
@@ -128,7 +128,7 @@ export class RustContract {
         }
     }
 
-    public async execute(calldata: Uint8Array | Buffer): Promise<Uint8Array> {
+    public async execute(calldata: Uint8Array | Buffer): Promise<ExitDataResponse> {
         if (this.enableDebug) console.log('execute', calldata);
 
         try {
@@ -136,8 +136,7 @@ export class RustContract {
             const gasUsed = this.contractManager.getUsedGas(this.id);
             this.gasCallback(gasUsed, 'execute');
 
-            const result = response.filter((n) => n !== undefined);
-            return this.__liftTypedArray(result[0] >>> 0);
+            return response;
         } catch (e) {
             if (this.enableDebug) console.log('Error in execute', e);
 
@@ -336,14 +335,14 @@ export class RustContract {
 
         const msg = err.message;
         if (msg.includes('Execution reverted') && !msg.includes('Execution reverted:')) {
-            return this.revert();
+            return this.getRevertError();
         } else {
             return err;
         }
     }
 
-    private revert(): Error {
-        const revertData = this.contractManager.getRevertData(this.id).data;
+    public getRevertError(): Error {
+        const revertData = this.contractManager.getExitData(this.id).data;
 
         try {
             this.dispose();
@@ -353,7 +352,7 @@ export class RustContract {
             return new Error(`Execution reverted`);
         } else {
             const revertDataBytes = Uint8Array.from(revertData);
-            if (this.startsWithErrorSelector(revertData, revertDataBytes)) {
+            if (this.startsWithErrorSelector(revertDataBytes)) {
                 const decoder = new TextDecoder();
                 const revertMessage = decoder.decode(revertDataBytes.slice(6));
                 return new Error(`Execution reverted: ${revertMessage}`);
@@ -364,12 +363,11 @@ export class RustContract {
     }
 
     private startsWithErrorSelector(
-        revertData: Array<number>,
         revertDataBytes: Uint8Array<ArrayBuffer>,
     ) {
         const errorSelectorBytes = Uint8Array.from([0x63, 0x73, 0x9d, 0x5c]);
         return (
-            revertData.length >= 4 &&
+            revertDataBytes.length >= 4 &&
             this.areBytesEqual(revertDataBytes.slice(0, 4), errorSelectorBytes)
         );
     }
