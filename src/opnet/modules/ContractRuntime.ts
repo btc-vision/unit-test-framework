@@ -455,7 +455,7 @@ export class ContractRuntime extends Logger {
         }
 
         const reader = new BinaryReader(data);
-        const remainingGas: bigint = reader.readU64();
+        const gasUsed: bigint = reader.readU64();
         const contractAddress: Address = reader.readAddress();
         const calldata: Uint8Array = reader.readBytesWithLength();
 
@@ -467,8 +467,6 @@ export class ContractRuntime extends Logger {
             this.info(`Attempting to call contract ${contractAddress.p2tr(Blockchain.network)}`);
         }
 
-        console.log(remainingGas, this.gasUsed);
-
         const contract: ContractRuntime = Blockchain.getContract(contractAddress);
         const code = contract.bytecode;
 
@@ -476,7 +474,7 @@ export class ContractRuntime extends Logger {
             address: contractAddress,
             deployer: contract.deployer,
             bytecode: code,
-            gasLimit: remainingGas,
+            gasLimit: contract.gasLimit - gasUsed,
         });
 
         ca.preserveState();

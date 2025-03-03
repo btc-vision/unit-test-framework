@@ -20,8 +20,6 @@ export interface ContractParameters extends Omit<RustContractBinding, 'id'> {
 }
 
 export class RustContract {
-    private refCounts: Map<number, number> = new Map<number, number>();
-
     private readonly enableDebug: boolean = false;
     private readonly enableDisposeLog: boolean = false;
 
