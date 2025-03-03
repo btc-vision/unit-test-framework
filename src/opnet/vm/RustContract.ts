@@ -335,13 +335,13 @@ export class RustContract {
 
         const msg = err.message;
         if (msg.includes('Execution reverted') && !msg.includes('Execution reverted:')) {
-            return this.revert();
+            return this.getRevertError();
         } else {
             return err;
         }
     }
 
-    public revert(): Error {
+    public getRevertError(): Error {
         const revertData = this.contractManager.getExitData(this.id).data;
 
         try {

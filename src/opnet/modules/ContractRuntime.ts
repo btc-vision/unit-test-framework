@@ -283,7 +283,7 @@ export class ContractRuntime extends Logger {
         });
 
         if (response && response.status != 0) {
-            this.contract.revert();
+            throw this.contract.getRevertError();
         }
 
         if (response && response.data.length === 0) {
