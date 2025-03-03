@@ -396,8 +396,6 @@ export class ContractRuntime extends Logger {
 
         this.deployedContracts.set(deployedContractAddress, this.bytecode);
 
-        console.log('add', deployedContractAddress);
-
         const response = new BinaryWriter();
         response.writeAddress(deployedContractAddress);
         response.writeU32(requestedContractBytecode.byteLength);
