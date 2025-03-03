@@ -114,7 +114,7 @@ export class OP_20 extends ContractRuntime {
         calldata.writeSelector(this.mintSelector);
         calldata.writeAddress(to);
         calldata.writeU256(Blockchain.expandToDecimal(amount, this.decimals));
-        calldata.writeAddressValueTupleMap(new AddressMap());
+        calldata.writeAddressValueTuple(new AddressMap());
         calldata.writeU256(0n);
 
         const buf = calldata.getBuffer();
@@ -176,7 +176,7 @@ export class OP_20 extends ContractRuntime {
     public async airdrop(map: AddressMap<bigint>): Promise<CallResponse> {
         const calldata = new BinaryWriter();
         calldata.writeSelector(this.airdropSelector);
-        calldata.writeAddressValueTupleMap(map);
+        calldata.writeAddressValueTuple(map);
 
         const buf = calldata.getBuffer();
         const result = await this.execute(buf, this.deployer, this.deployer);
