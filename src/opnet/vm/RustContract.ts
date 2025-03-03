@@ -1,4 +1,9 @@
-import { BitcoinNetworkRequest, CallResponse, ContractManager, ExitDataResponse } from '@btc-vision/op-vm';
+import {
+    BitcoinNetworkRequest,
+    CallResponse,
+    ContractManager,
+    ExitDataResponse,
+} from '@btc-vision/op-vm';
 import { RustContractBinding } from './RustContractBinding.js';
 import { Blockchain } from '../../blockchain/Blockchain.js';
 
@@ -237,63 +242,6 @@ export class RustContract {
         }
     }
 
-    private __liftString(pointer: number): string | null {
-        if (this.enableDebug) console.log('Lifting string', pointer);
-
-        if (!pointer) return null;
-
-        // Read the length of the string
-        const lengthPointer = pointer - 4;
-        const lengthBuffer = this.contractManager.readMemory(this.id, BigInt(lengthPointer), 4n);
-        const length = new Uint32Array(lengthBuffer.buffer)[0];
-
-        const end = (pointer + length) >>> 1;
-        const stringParts: Array<string> = [];
-        let start = pointer >>> 1;
-
-        while (end - start > 1024) {
-            const chunkBuffer = this.contractManager.readMemory(this.id, BigInt(start * 2), 2048n);
-            const memoryU16 = new Uint16Array(chunkBuffer.buffer);
-            stringParts.push(String.fromCharCode(...memoryU16));
-            start += 1024;
-        }
-
-        const remainingBuffer = this.contractManager.readMemory(
-            this.id,
-            BigInt(start * 2),
-            BigInt((end - start) * 2),
-        );
-
-        const remainingU16 = new Uint16Array(remainingBuffer.buffer);
-        stringParts.push(String.fromCharCode(...remainingU16));
-
-        return stringParts.join('');
-    }
-
-    private __liftTypedArray(pointer: number): Uint8Array {
-        if (this.enableDebug) console.log('Lifting typed array', pointer);
-
-        if (!pointer) throw new Error('Pointer cannot be null');
-
-        // Read the data offset and length
-        const buffer = this.contractManager.readMemory(this.id, BigInt(pointer + 4), 8n);
-
-        const dataView = new DataView(buffer.buffer);
-        const dataOffset = dataView.getUint32(0, true);
-        const length = dataView.getUint32(4, true) / Uint8Array.BYTES_PER_ELEMENT;
-
-        // Read the actual data
-        const dataBuffer = this.contractManager.readMemory(
-            this.id,
-            BigInt(dataOffset),
-            BigInt(length * Uint8Array.BYTES_PER_ELEMENT),
-        );
-
-        // Create the typed array and return its slice
-        const typedArray = new Uint8Array(dataBuffer.buffer);
-        return typedArray.slice();
-    }
-
     private async __lowerTypedArray(
         id: number,
         align: number,
@@ -362,9 +310,7 @@ export class RustContract {
         }
     }
 
-    private startsWithErrorSelector(
-        revertDataBytes: Uint8Array<ArrayBuffer>,
-    ) {
+    private startsWithErrorSelector(revertDataBytes: Uint8Array<ArrayBuffer>) {
         const errorSelectorBytes = Uint8Array.from([0x63, 0x73, 0x9d, 0x5c]);
         return (
             revertDataBytes.length >= 4 &&
