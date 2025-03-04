@@ -1,9 +1,4 @@
-import {
-    BitcoinNetworkRequest,
-    CallResponse,
-    ContractManager,
-    ExitDataResponse,
-} from '@btc-vision/op-vm';
+import { BitcoinNetworkRequest, ContractManager, ExitDataResponse } from '@btc-vision/op-vm';
 import { RustContractBinding } from './RustContractBinding.js';
 import { Blockchain } from '../../blockchain/Blockchain.js';
 
@@ -167,22 +162,16 @@ export class RustContract {
         }
     }
 
-    public async onDeploy(buffer: Uint8Array | Buffer): Promise<CallResponse> {
-        if (this.enableDebug) console.log('Setting onDeployment', buffer);
+    public async onDeploy(calldata: Uint8Array | Buffer): Promise<ExitDataResponse> {
+        if (this.enableDebug) console.log('Setting onDeployment', calldata);
 
         try {
-            const data = await this.__lowerTypedArray(13, 0, buffer);
-            if (data == null) throw new Error('Data cannot be null');
-
-            const resp = await this.contractManager.call(this.id, 'onDeploy', [data]);
+            const resp = await this.contractManager.onDeploy(this.id, Buffer.from(calldata));
             const gasUsed = this.contractManager.getUsedGas(this.id);
 
             this.gasCallback(gasUsed, 'onDeploy');
 
-            return {
-                result: resp.filter((n) => n !== undefined),
-                gasUsed: gasUsed,
-            };
+            return resp;
         } catch (e) {
             if (this.enableDebug) console.log('Error in onDeployment', e);
 
