@@ -75,10 +75,6 @@ export class ContractRuntime extends Logger {
         return this._contract;
     }
 
-    public get safeRnd64(): bigint {
-        return Blockchain.blockNumber >> 1n;
-    }
-
     protected _bytecode: Buffer | undefined;
 
     protected get bytecode(): Buffer {
@@ -151,7 +147,6 @@ export class ContractRuntime extends Logger {
         writer.writeAddress(owner);
         writer.writeAddress(address);
         writer.writeU64(Blockchain.medianTimestamp);
-        writer.writeU64(this.safeRnd64); // rnd number for now
 
         await this.contract.setEnvironment(writer.getBuffer());
     }
@@ -243,7 +238,6 @@ export class ContractRuntime extends Logger {
 
         if (response && response.status !== 0) {
             throw this.contract.getRevertError();
-
         }
 
         this.deploymentStates = new FastBigIntMap(this.states);
@@ -293,7 +287,6 @@ export class ContractRuntime extends Logger {
 
         if (response && response.status !== 0) {
             throw this.contract.getRevertError();
-
         }
 
         const usedGas = this.contract.getUsedGas() - usedGasBefore;
