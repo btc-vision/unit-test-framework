@@ -233,12 +233,17 @@ export class ContractRuntime extends Logger {
         const calldata = this.deploymentCalldata || Buffer.alloc(0);
 
         let error: Error | undefined;
-        await this.contract.onDeploy(calldata).catch((e: unknown) => {
+        const response = await this.contract.onDeploy(calldata).catch((e: unknown) => {
             error = e as Error;
         });
 
         if (error) {
             throw this.handleError(error);
+        }
+
+        if (response && response.status !== 0) {
+            throw this.contract.getRevertError();
+
         }
 
         this.deploymentStates = new FastBigIntMap(this.states);
@@ -282,12 +287,13 @@ export class ContractRuntime extends Logger {
             return undefined;
         });
 
-        if (response && response.status !== 0) {
-            throw this.contract.getRevertError();
-        }
-
         if (error) {
             throw error;
+        }
+
+        if (response && response.status !== 0) {
+            throw this.contract.getRevertError();
+
         }
 
         const usedGas = this.contract.getUsedGas() - usedGasBefore;
