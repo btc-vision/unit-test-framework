@@ -162,7 +162,7 @@ export class ContractRuntime extends Logger {
             contractDeployer: owner,
             caller: msgSender,
             origin: txOrigin,
-        }
+        };
 
         this.contract.setEnvironment(params);
     }
