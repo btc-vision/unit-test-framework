@@ -2,7 +2,7 @@ import { BinaryWriter } from '@btc-vision/transaction';
 
 export class TransactionInput {
     public constructor(
-        public readonly txId: Uint8Array,
+        public readonly txHash: Uint8Array,
         public readonly outputIndex: number,
         public readonly scriptSig: Uint8Array,
     ) {}
@@ -41,8 +41,8 @@ export class Transaction {
         this.outputs.push(new TransactionOutput(this.outputs.length, receiver, value));
     }
 
-    public addInput(txId: Uint8Array, outputIndex: number, scriptSig: Uint8Array): void {
-        this.inputs.push(new TransactionInput(txId, outputIndex, scriptSig));
+    public addInput(txHash: Uint8Array, outputIndex: number, scriptSig: Uint8Array): void {
+        this.inputs.push(new TransactionInput(txHash, outputIndex, scriptSig));
     }
 
     public serializeInputs(): Uint8Array {
@@ -50,7 +50,7 @@ export class Transaction {
         writer.writeU8(this.inputs.length);
 
         for (const input of this.inputs) {
-            writer.writeBytes(input.txId);
+            writer.writeBytes(input.txHash);
             writer.writeU8(input.outputIndex);
             writer.writeBytesWithLength(input.scriptSig);
         }
