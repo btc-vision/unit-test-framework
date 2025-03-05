@@ -8,7 +8,7 @@ import {
     NetEvent,
 } from '@btc-vision/transaction';
 import { Logger } from '@btc-vision/logger';
-import { BitcoinNetworkRequest } from '@btc-vision/op-vm';
+import { BitcoinNetworkRequest, EnvironmentVariablesRequest } from '@btc-vision/op-vm';
 import bitcoin from '@btc-vision/bitcoin';
 import crypto from 'crypto';
 import { Blockchain } from '../../blockchain/Blockchain.js';
@@ -83,7 +83,12 @@ export class ContractRuntime extends Logger {
         return this._bytecode;
     }
 
-    private get transactionId(): Uint8Array {
+    private get transactionHash(): Uint8Array {
+        // generate random 32 bytes
+        return crypto.getRandomValues(new Uint8Array(32));
+    }
+
+    private get blockHash(): Uint8Array {
         // generate random 32 bytes
         return crypto.getRandomValues(new Uint8Array(32));
     }
@@ -127,28 +132,39 @@ export class ContractRuntime extends Logger {
         this.restoreStatesToDeployment();
     }
 
-    public async setEnvironment(
+    public setEnvironment(
         msgSender: Address = Blockchain.msgSender || this.deployer,
         txOrigin: Address = Blockchain.txOrigin || this.deployer,
         currentBlock: bigint = Blockchain.blockNumber,
         owner: Address = this.deployer,
         address: Address = this.address,
-    ): Promise<void> {
-        if (this.transactionId.length !== 32) {
+    ): void {
+        if (this.transactionHash.length !== 32) {
             throw new Error('Transaction ID must be 32 bytes long');
         }
 
         const writer = new BinaryWriter();
         writer.writeAddress(msgSender);
         writer.writeAddress(txOrigin); // "leftmost thing in the call chain"
-        writer.writeBytes(this.transactionId); // "transaction id"
+        writer.writeBytes(this.transactionHash); // "transaction id"
 
         writer.writeU256(currentBlock);
         writer.writeAddress(owner);
         writer.writeAddress(address);
         writer.writeU64(Blockchain.medianTimestamp);
 
-        await this.contract.setEnvironment(writer.getBuffer());
+        const params: EnvironmentVariablesRequest = {
+            blockHash: this.blockHash,
+            blockNumber: currentBlock,
+            blockMedianTime: Blockchain.medianTimestamp,
+            txHash: this.transactionHash,
+            contractAddress: address,
+            contractDeployer: owner,
+            caller: msgSender,
+            origin: txOrigin,
+        }
+
+        this.contract.setEnvironment(params);
     }
 
     public backupStates(): void {
@@ -223,7 +239,7 @@ export class ContractRuntime extends Logger {
 
         this.loadContract();
 
-        await this.setEnvironment(this.deployer, this.deployer);
+        this.setEnvironment(this.deployer, this.deployer);
 
         const calldata = this.deploymentCalldata || Buffer.alloc(0);
 
@@ -260,9 +276,9 @@ export class ContractRuntime extends Logger {
         this.loadContract();
 
         if (sender || txOrigin) {
-            await this.setEnvironment(sender, txOrigin);
+            this.setEnvironment(sender, txOrigin);
         } else {
-            await this.setEnvironment();
+            this.setEnvironment();
         }
 
         const usedGasBefore = this.contract.getUsedGas();
