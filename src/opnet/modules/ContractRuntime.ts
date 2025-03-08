@@ -526,7 +526,7 @@ export class ContractRuntime extends Logger {
 
     private onLog(data: Buffer | Uint8Array): void {
         const reader = new BinaryReader(data);
-        const logData = reader.readStringWithLength();
+        const logData = reader.readString(data.length);
 
         this.warn(`Contract log: ${logData}`);
     }
