@@ -200,16 +200,9 @@ export class ContractRuntime extends Logger {
             throw this.handleError(response.error);
         }
 
-        const writer = new BinaryWriter();
-        writer.writeU64(response.usedGas);
-
-        if (response.response) {
-            writer.writeBytes(response.response);
-        }
-
-        const newResponse = writer.getBuffer();
         return {
-            response: newResponse,
+            status: response.status,
+            response: response.response,
             events: response.events,
             callStack: this.callStack,
             usedGas: response.usedGas,
@@ -297,17 +290,18 @@ export class ContractRuntime extends Logger {
             return undefined;
         });
 
-        if (error) {
+        if (response == null || error) {
             throw error;
         }
 
-        if (response && response.status !== 0) {
+        if (response.status !== 0) {
             throw this.contract.getRevertError();
         }
 
         const usedGas = this.contract.getUsedGas() - usedGasBefore;
         return {
-            response: Uint8Array.from(response?.data || []),
+            status: response.status,
+            response: Uint8Array.from(response.data),
             error,
             events: this.events,
             callStack: this.callStack,
@@ -517,11 +511,11 @@ export class ContractRuntime extends Logger {
 
         this.checkReentrancy(callResponse.callStack);
 
-        if (!callResponse.response) {
-            throw this.handleError(new Error(`OPNET: CALL_FAILED: ${callResponse.error}`));
-        }
-
-        return callResponse.response;
+        const writer = new BinaryWriter();
+        writer.writeU64(callResponse.usedGas);
+        writer.writeU32(callResponse.status);
+        writer.writeBytes(callResponse.response);
+        return writer.getBuffer();
     }
 
     private onLog(data: Buffer | Uint8Array): void {
