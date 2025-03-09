@@ -136,7 +136,7 @@ export class ContractRuntime extends Logger {
         msgSender: Address = Blockchain.msgSender || this.deployer,
         txOrigin: Address = Blockchain.txOrigin || this.deployer,
         currentBlock: bigint = Blockchain.blockNumber,
-        owner: Address = this.deployer,
+        deployer: Address = this.deployer,
         address: Address = this.address,
     ): void {
         if (this.transactionHash.length !== 32) {
@@ -149,7 +149,7 @@ export class ContractRuntime extends Logger {
         writer.writeBytes(this.transactionHash); // "transaction id"
 
         writer.writeU256(currentBlock);
-        writer.writeAddress(owner);
+        writer.writeAddress(deployer);
         writer.writeAddress(address);
         writer.writeU64(Blockchain.medianTimestamp);
 
@@ -159,7 +159,7 @@ export class ContractRuntime extends Logger {
             blockMedianTime: Blockchain.medianTimestamp,
             txHash: this.transactionHash,
             contractAddress: address,
-            contractDeployer: owner,
+            contractDeployer: deployer,
             caller: msgSender,
             origin: txOrigin,
         };
