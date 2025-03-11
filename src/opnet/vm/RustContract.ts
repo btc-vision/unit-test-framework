@@ -4,8 +4,8 @@ import {
     EnvironmentVariablesRequest,
     ExitDataResponse,
 } from '@btc-vision/op-vm';
-import { RustContractBinding } from './RustContractBinding.js';
-import { Blockchain } from '../../blockchain/Blockchain.js';
+import { RustContractBinding } from './RustContractBinding';
+import { Blockchain } from '../../blockchain/Blockchain';
 
 export interface ContractParameters extends Omit<RustContractBinding, 'id'> {
     readonly address: string;
@@ -60,22 +60,6 @@ export class RustContract {
         return this._id;
     }
 
-    public instantiate(): void {
-        if (this._id == null) throw new Error('Contract is not instantiated');
-        if (this._instantiated) return;
-
-        this.contractManager.instantiate(
-            this._id,
-            this.params.address,
-            this.params.bytecode,
-            this.params.gasLimit,
-            this.params.network,
-            this.params.isDebugMode,
-        );
-
-        this._instantiated = true;
-    }
-
     private _instantiated: boolean = false;
 
     public get instantiated(): boolean {
@@ -96,6 +80,22 @@ export class RustContract {
         }
 
         return this._params;
+    }
+
+    public instantiate(): void {
+        if (this._id == null) throw new Error('Contract is not instantiated');
+        if (this._instantiated) return;
+
+        this.contractManager.instantiate(
+            this._id,
+            this.params.address,
+            this.params.bytecode,
+            this.params.gasLimit,
+            this.params.network,
+            this.params.isDebugMode,
+        );
+
+        this._instantiated = true;
     }
 
     public dispose(): void {
@@ -179,15 +179,6 @@ export class RustContract {
         }
     }
 
-    public setUsedGas(gas: bigint): void {
-        try {
-            this.contractManager.setUsedGas(this.id, gas);
-        } catch (e) {
-            const error = e as Error;
-            throw this.getError(error);
-        }
-    }
-
     public getUsedGas(): bigint {
         try {
             if (this.disposed && this.gasUsed) {
@@ -201,30 +192,28 @@ export class RustContract {
         }
     }
 
-    public useGas(amount: bigint): void {
+    public getRevertError(): Error {
+        const revertData = this.contractManager.getExitData(this.id).data;
+
         try {
-            return this.contractManager.useGas(this.id, amount);
-        } catch (e) {
-            const error = e as Error;
-            throw this.getError(error);
+            this.dispose();
+        } catch {}
+
+        if (revertData.length === 0) {
+            return new Error(`Execution reverted`);
+        } else {
+            const revertDataBytes = Uint8Array.from(revertData);
+            return this.decodeRevertData(revertDataBytes);
         }
     }
 
-    public getRemainingGas(): bigint {
-        try {
-            return this.contractManager.getRemainingGas(this.id);
-        } catch (e) {
-            const error = e as Error;
-            throw this.getError(error);
-        }
-    }
-
-    public setRemainingGas(gas: bigint): void {
-        try {
-            this.contractManager.setRemainingGas(this.id, gas);
-        } catch (e) {
-            const error = e as Error;
-            throw this.getError(error);
+    public decodeRevertData(revertDataBytes: Uint8Array): Error {
+        if (this.startsWithErrorSelector(revertDataBytes)) {
+            const decoder = new TextDecoder();
+            const revertMessage = decoder.decode(revertDataBytes.slice(6));
+            return new Error(`Execution reverted: ${revertMessage}`);
+        } else {
+            return new Error(`Execution reverted: 0x${this.bytesToHexString(revertDataBytes)}`);
         }
     }
 
@@ -243,28 +232,7 @@ export class RustContract {
         }
     }
 
-    public getRevertError(): Error {
-        const revertData = this.contractManager.getExitData(this.id).data;
-
-        try {
-            this.dispose();
-        } catch {}
-
-        if (revertData.length === 0) {
-            return new Error(`Execution reverted`);
-        } else {
-            const revertDataBytes = Uint8Array.from(revertData);
-            if (this.startsWithErrorSelector(revertDataBytes)) {
-                const decoder = new TextDecoder();
-                const revertMessage = decoder.decode(revertDataBytes.slice(6));
-                return new Error(`Execution reverted: ${revertMessage}`);
-            } else {
-                return new Error(`Execution reverted: 0x${this.bytesToHexString(revertDataBytes)}`);
-            }
-        }
-    }
-
-    private startsWithErrorSelector(revertDataBytes: Uint8Array<ArrayBuffer>) {
+    private startsWithErrorSelector(revertDataBytes: Uint8Array) {
         const errorSelectorBytes = Uint8Array.from([0x63, 0x73, 0x9d, 0x5c]);
         return (
             revertDataBytes.length >= 4 &&
