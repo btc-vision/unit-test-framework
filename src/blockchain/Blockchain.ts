@@ -141,11 +141,7 @@ class BlockchainBase extends Logger {
         this.contracts.clear();
     }
 
-    public generateAddress(
-        deployer: Address,
-        salt: Buffer,
-        from: Address,
-    ): Address {
+    public generateAddress(deployer: Address, salt: Buffer, from: Address): Address {
         const bytecode = BytecodeManager.getBytecode(from);
         const contractVirtualAddress = TapscriptVerificator.getContractSeed(
             bitcoin.crypto.hash256(Buffer.from(deployer)),

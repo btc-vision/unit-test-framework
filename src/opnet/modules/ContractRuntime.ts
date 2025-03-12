@@ -230,6 +230,8 @@ export class ContractRuntime extends Logger {
             return;
         }
 
+        const statesBackup = new FastBigIntMap(this.states);
+
         this.loadContract();
 
         this.setEnvironment(this.deployer, this.deployer);
@@ -241,12 +243,17 @@ export class ContractRuntime extends Logger {
             error = e as Error;
         });
 
-        if (error) {
-            throw this.handleError(error);
+        if (response && response.status !== 0) {
+            error = this.contract.getRevertError();
         }
 
-        if (response && response.status !== 0) {
-            throw this.contract.getRevertError();
+        if (error) {
+            // Restore states
+            this.states = statesBackup;
+        }
+
+        if (response == null) {
+            throw error;
         }
 
         this.deploymentStates = new FastBigIntMap(this.states);

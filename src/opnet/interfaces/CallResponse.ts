@@ -1,7 +1,7 @@
 import { AddressSet, NetEvent } from '@btc-vision/transaction';
 
 export interface CallResponse {
-    status: number
+    status: number;
     response: Uint8Array;
     error?: Error;
     events: NetEvent[];

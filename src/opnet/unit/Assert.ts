@@ -134,7 +134,7 @@ export class Assert {
             }
         }
     }
-    
+
     private static deepStrictEqual(actual: unknown, expected: unknown): boolean {
         if (actual === expected) return true;
         if (

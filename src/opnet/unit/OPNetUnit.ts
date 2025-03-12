@@ -4,7 +4,7 @@ import { Blockchain } from '../../blockchain/Blockchain.js';
 export class OPNetUnit extends Logger {
     public readonly logColor = '#FFA500';
     public afterAllFunc: (() => Promise<void> | void) | null = null;
-    
+
     private beforeEachFunc: (() => Promise<void> | void) | null = null;
     private afterEachFunc: (() => Promise<void> | void) | null = null;
 
