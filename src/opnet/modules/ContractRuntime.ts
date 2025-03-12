@@ -263,8 +263,6 @@ export class ContractRuntime extends Logger {
         sender?: Address,
         txOrigin?: Address,
     ): Promise<CallResponse> {
-        this.backupStates();
-
         // Deploy if not deployed.
         await this.deployContract();
 
@@ -286,23 +284,20 @@ export class ContractRuntime extends Logger {
         const response = await this.contract.execute(calldata).catch(async (e: unknown) => {
             error = (await e) as Error;
 
-            // Restore states
-            this.states = statesBackup;
-
             return undefined;
         });
 
-        if (response == null) {
-            this.restoreStates();
-            throw error;
-        }
-
-        if (response.status !== 0) {
+        if (response && response.status !== 0) {
             error = this.contract.getRevertError();
         }
 
-        if(error) {
-            this.restoreStates();
+        if (error) {
+            // Restore states
+            this.states = statesBackup;
+        }
+
+        if (response == null) {
+            throw error;
         }
 
         const usedGas = this.contract.getUsedGas() - usedGasBefore;
