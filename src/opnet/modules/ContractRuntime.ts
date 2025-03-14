@@ -487,6 +487,7 @@ export class ContractRuntime extends Logger {
 
         const contract: ContractRuntime = Blockchain.getContract(contractAddress);
         const code = contract.bytecode;
+        const isAddressWarm = this.callStack.has(contractAddress);
 
         const ca = new ContractRuntime({
             address: contractAddress,
@@ -521,6 +522,7 @@ export class ContractRuntime extends Logger {
         this.checkReentrancy(callResponse.callStack);
 
         const writer = new BinaryWriter();
+        writer.writeBoolean(isAddressWarm);
         writer.writeU64(callResponse.usedGas);
         writer.writeU32(callResponse.status);
         writer.writeBytes(callResponse.response);
