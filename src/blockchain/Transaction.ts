@@ -47,11 +47,11 @@ export class Transaction {
 
     public serializeInputs(): Uint8Array {
         const writer = new BinaryWriter();
-        writer.writeU8(this.inputs.length);
+        writer.writeU16(this.inputs.length);
 
         for (const input of this.inputs) {
             writer.writeBytes(input.txHash);
-            writer.writeU8(input.outputIndex);
+            writer.writeU16(input.outputIndex);
             writer.writeBytesWithLength(input.scriptSig);
         }
 
@@ -60,10 +60,10 @@ export class Transaction {
 
     public serializeOutputs(): Uint8Array {
         const writer = new BinaryWriter();
-        writer.writeU8(this.outputs.length);
+        writer.writeU16(this.outputs.length);
 
         for (const output of this.outputs) {
-            writer.writeU8(output.index);
+            writer.writeU16(output.index);
             writer.writeStringWithLength(output.to);
             writer.writeU64(output.value);
         }
