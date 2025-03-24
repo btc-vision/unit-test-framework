@@ -83,6 +83,11 @@ export class ContractRuntime extends Logger {
         return this._bytecode;
     }
 
+    private get transactionId(): Uint8Array {
+        // generate random 32 bytes
+        return crypto.getRandomValues(new Uint8Array(32));
+    }
+
     private get transactionHash(): Uint8Array {
         // generate random 32 bytes
         return crypto.getRandomValues(new Uint8Array(32));
@@ -157,6 +162,7 @@ export class ContractRuntime extends Logger {
             blockHash: this.blockHash,
             blockNumber: currentBlock,
             blockMedianTime: Blockchain.medianTimestamp,
+            txId: this.transactionId,
             txHash: this.transactionHash,
             contractAddress: address,
             contractDeployer: deployer,
