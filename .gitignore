@@ -134,4 +134,5 @@ dist
 *.swo
 *.swp
 
-.idea
+.idea/
+abis/
