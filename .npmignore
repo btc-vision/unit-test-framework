@@ -1,3 +1,10 @@
-node_modules
+node_modules/
+.github/
+.idea/
+.vscode/
+docs/
+examples/
+src/
+test/
 *.swp
 *.swo
