@@ -35,7 +35,7 @@ export class ContractRuntime extends Logger {
     protected shouldPreserveState: boolean = true;
     protected events: NetEvent[] = [];
 
-    protected readonly gasLimit: bigint = 100_000_000_000n;
+    protected readonly gasMax: bigint = 100_000_000_000n;
     protected readonly deployedContracts: AddressMap<Buffer> = new AddressMap<Buffer>();
     protected readonly abiCoder = new ABICoder();
 
@@ -57,7 +57,13 @@ export class ContractRuntime extends Logger {
         this.deploymentCalldata = details.deploymentCalldata;
 
         if (details.gasLimit) {
-            this.gasLimit = details.gasLimit;
+            this.gasMax = details.gasLimit;
+        }
+
+        if (details.gasUsed !== undefined) {
+            this.gasUsed = details.gasUsed;
+        } else {
+            this.gasUsed = 0n;
         }
 
         if (!this.deployer) {
@@ -185,6 +191,7 @@ export class ContractRuntime extends Logger {
         data: Buffer | Uint8Array,
         sender: Address,
         from: Address,
+        gasUsed: bigint,
     ): Promise<CallResponse> {
         const reader = new BinaryReader(data);
         const selector: number = reader.readSelector();
@@ -195,7 +202,7 @@ export class ContractRuntime extends Logger {
             );
         }
 
-        const response: CallResponse = await this.execute(data as Buffer, sender, from);
+        const response: CallResponse = await this.execute(data as Buffer, sender, from, gasUsed);
         if (Blockchain.traceCalls) {
             this.log(`Call response: ${response.response}`);
         }
@@ -218,8 +225,6 @@ export class ContractRuntime extends Logger {
     public dispose(): void {
         if (this._contract) {
             this._contract.dispose();
-
-            this.gasUsed = this.contract.getUsedGas();
         }
     }
 
@@ -237,7 +242,6 @@ export class ContractRuntime extends Logger {
         }
 
         const statesBackup = new FastBigIntMap(this.states);
-
         this.loadContract();
 
         this.setEnvironment(this.deployer, this.deployer);
@@ -275,10 +279,14 @@ export class ContractRuntime extends Logger {
         calldata: Buffer | Uint8Array,
         sender?: Address,
         txOrigin?: Address,
+        gasUsed?: bigint,
     ): Promise<CallResponse> {
+        this.gasUsed = 0n;
+
         // Deploy if not deployed.
         await this.deployContract();
 
+        this.gasUsed = gasUsed || 0n;
         this.loadContract();
 
         if (sender || txOrigin) {
@@ -287,9 +295,7 @@ export class ContractRuntime extends Logger {
             this.setEnvironment();
         }
 
-        const usedGasBefore = this.contract.getUsedGas();
         const statesBackup = new FastBigIntMap(this.states);
-
         this.loadedPointers = 0n;
         this.storedPointers = 0n;
 
@@ -313,14 +319,15 @@ export class ContractRuntime extends Logger {
             throw error;
         }
 
-        const usedGas = this.contract.getUsedGas() - usedGasBefore;
+        this.gasUsed = response.gasUsed;
+
         return {
             status: response.status,
             response: Uint8Array.from(response.data),
             error,
             events: this.events,
             callStack: this.callStack,
-            usedGas: usedGas,
+            usedGas: response.gasUsed,
         };
     }
 
@@ -400,7 +407,7 @@ export class ContractRuntime extends Logger {
         const newContract: ContractRuntime = new ContractRuntime({
             address: deployedContractAddress,
             deployer: this.address,
-            gasLimit: this.gasLimit,
+            gasLimit: this.gasMax,
             bytecode: requestedContractBytecode,
         });
 
@@ -430,16 +437,17 @@ export class ContractRuntime extends Logger {
     private load(data: Buffer): Buffer | Uint8Array {
         const reader = new BinaryReader(data);
         const pointer = reader.readU256();
-        const value = this.states.get(pointer) || 0n;
+        const value = this.states.get(pointer);
 
         if (Blockchain.tracePointers) {
-            this.log(`Attempting to load pointer ${pointer} - value ${value}`);
+            this.log(`Attempting to load pointer ${pointer} - value ${value || 0n}`);
         }
 
         this.loadedPointers++;
 
         const response: BinaryWriter = new BinaryWriter();
-        response.writeU256(value);
+        response.writeU256(value || 0n);
+        response.writeBoolean(value !== undefined);
 
         return response.getBuffer();
     }
@@ -499,7 +507,8 @@ export class ContractRuntime extends Logger {
             address: contractAddress,
             deployer: contract.deployer,
             bytecode: code,
-            gasLimit: contract.gasLimit - gasUsed,
+            gasLimit: contract.gasMax,
+            gasUsed: gasUsed,
         });
 
         ca.preserveState();
@@ -511,7 +520,9 @@ export class ContractRuntime extends Logger {
             calldata,
             this.address,
             Blockchain.txOrigin,
+            gasUsed,
         );
+
         contract.setStates(ca.getStates());
 
         try {
@@ -532,6 +543,7 @@ export class ContractRuntime extends Logger {
         writer.writeU64(callResponse.usedGas);
         writer.writeU32(callResponse.status);
         writer.writeBytes(callResponse.response);
+
         return writer.getBuffer();
     }
 
@@ -595,10 +607,10 @@ export class ContractRuntime extends Logger {
         return {
             address: this.p2trAddress,
             bytecode: this.bytecode,
-            gasLimit: this.gasLimit,
+            gasMax: this.gasMax,
+            gasUsed: this.gasUsed,
             network: this.getNetwork(),
             isDebugMode: this.isDebugMode,
-            gasCallback: this.onGas.bind(this),
             contractManager: Blockchain.contractManager,
             deployContractAtAddress: this.deployContractAtAddress.bind(this),
             load: (data: Buffer) => {
@@ -627,11 +639,5 @@ export class ContractRuntime extends Logger {
             inputs: this.onInputsRequested.bind(this),
             outputs: this.onOutputsRequested.bind(this),
         };
-    }
-
-    private onGas(gas: bigint, method: string): void {
-        if (Blockchain.traceGas) {
-            this.debug(`Gas: ${gas}`, method);
-        }
     }
 }

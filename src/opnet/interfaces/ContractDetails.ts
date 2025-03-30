@@ -5,6 +5,7 @@ export interface ContractDetails {
     readonly deployer: Address;
 
     readonly gasLimit?: bigint;
+    readonly gasUsed?: bigint;
 
     readonly deploymentCalldata?: Buffer;
     readonly bytecode?: Buffer;
