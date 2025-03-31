@@ -596,6 +596,25 @@ export class ContractRuntime extends Logger {
         }
     }
 
+    private getAccountType(data: Buffer): Promise<number> {
+        const reader = new BinaryReader(data);
+        const targetAddress = reader.readAddress();
+
+        let accountType;
+        if (Blockchain.isContract(targetAddress)) {
+            accountType = 1;
+        } else {
+            accountType = 0;
+        }
+
+        return Promise.resolve(accountType);
+    }
+
+    private getBlockHash(blockNumber: bigint): Promise<Buffer> {
+        const fakeBlockHash = crypto.createHash('sha256').update(blockNumber.toString()).digest();
+        return Promise.resolve(fakeBlockHash);
+    }
+
     private fakeLoad(): void {
         let i = 0;
         while (i < 5000000) {
@@ -638,6 +657,8 @@ export class ContractRuntime extends Logger {
             emit: this.onEvent.bind(this),
             inputs: this.onInputsRequested.bind(this),
             outputs: this.onOutputsRequested.bind(this),
+            accountType: this.getAccountType.bind(this),
+            blockHash: this.getBlockHash.bind(this),
         };
     }
 }

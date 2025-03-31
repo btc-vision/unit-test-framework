@@ -8,4 +8,6 @@ export interface RustContractBinding {
     readonly emit: (data: Buffer) => void;
     readonly inputs: () => Promise<Buffer | Uint8Array>;
     readonly outputs: () => Promise<Buffer | Uint8Array>;
+    readonly accountType: (data: Buffer) => Promise<number>;
+    readonly blockHash: (blockNumber: bigint) => Promise<Buffer | Uint8Array>
 }
