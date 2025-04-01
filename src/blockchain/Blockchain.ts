@@ -1,6 +1,6 @@
 import { Address, AddressMap, EcKeyPair, TapscriptVerificator } from '@btc-vision/transaction';
 import { Logger } from '@btc-vision/logger';
-import { BlockHashRequest, ContractManager, ThreadSafeJsImportResponse } from '@btc-vision/op-vm';
+import { AccountTypeResponse, BlockHashRequest, ContractManager, ThreadSafeJsImportResponse } from '@btc-vision/op-vm';
 import bitcoin, { Network } from '@btc-vision/bitcoin';
 import crypto from 'crypto';
 import {
@@ -421,10 +421,10 @@ class BlockchainBase extends Logger {
     private accountTypeJSFunction: (
         _: never,
         result: ThreadSafeJsImportResponse,
-    ) => Promise<number> = (
+    ) => Promise<AccountTypeResponse> = (
         _: never,
         value: ThreadSafeJsImportResponse,
-    ): Promise<number> => {
+    ): Promise<AccountTypeResponse> => {
         if (this.enableDebug) console.log('ACCOUNT TYPE', value.buffer);
 
         const u = new Uint8Array(value.buffer);

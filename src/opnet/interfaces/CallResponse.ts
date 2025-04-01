@@ -6,6 +6,7 @@ export interface CallResponse {
     error?: Error;
     events: NetEvent[];
     callStack: AddressSet;
+    touchedAddresses: AddressSet;
 
     usedGas: bigint;
 }

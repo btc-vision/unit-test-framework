@@ -8,7 +8,7 @@ import {
     NetEvent,
 } from '@btc-vision/transaction';
 import { Logger } from '@btc-vision/logger';
-import { BitcoinNetworkRequest, EnvironmentVariablesRequest } from '@btc-vision/op-vm';
+import { AccountTypeResponse, BitcoinNetworkRequest, EnvironmentVariablesRequest } from '@btc-vision/op-vm';
 import bitcoin from '@btc-vision/bitcoin';
 import crypto from 'crypto';
 import { Blockchain } from '../../blockchain/Blockchain.js';
@@ -40,6 +40,7 @@ export class ContractRuntime extends Logger {
     protected readonly abiCoder = new ABICoder();
 
     private callStack: AddressSet = new AddressSet();
+    private touchedAddresses: AddressSet = new AddressSet();
     private statesBackup: FastBigIntMap = new FastBigIntMap();
 
     private readonly potentialBytecode?: Buffer;
@@ -136,6 +137,7 @@ export class ContractRuntime extends Logger {
         this.events = [];
 
         this.callStack.clear();
+        this.touchedAddresses.clear()
         this.deployedContracts.clear();
     }
 
@@ -218,6 +220,7 @@ export class ContractRuntime extends Logger {
             response: response.response,
             events: response.events,
             callStack: this.callStack,
+            touchedAddresses: this.touchedAddresses,
             usedGas: response.usedGas,
         };
     }
@@ -327,6 +330,7 @@ export class ContractRuntime extends Logger {
             error,
             events: this.events,
             callStack: this.callStack,
+            touchedAddresses: this.touchedAddresses,
             usedGas: response.gasUsed,
         };
     }
@@ -363,6 +367,7 @@ export class ContractRuntime extends Logger {
 
             this.events = [];
             this.callStack = new AddressSet([this.address]);
+            this.touchedAddresses = new AddressSet([this.address]);
 
             const params: ContractParameters = this.generateParams();
             this._contract = new RustContract(params);
@@ -501,7 +506,7 @@ export class ContractRuntime extends Logger {
 
         const contract: ContractRuntime = Blockchain.getContract(contractAddress);
         const code = contract.bytecode;
-        const isAddressWarm = this.callStack.has(contractAddress);
+        const isAddressWarm = this.touchedAddresses.has(contractAddress);
 
         const ca = new ContractRuntime({
             address: contractAddress,
@@ -531,6 +536,7 @@ export class ContractRuntime extends Logger {
 
         this.events = [...this.events, ...callResponse.events];
         this.callStack = this.callStack.combine(callResponse.callStack);
+        this.touchedAddresses = this.touchedAddresses.combine(callResponse.touchedAddresses);
 
         if (this.callStack.size > MAX_CALL_STACK_DEPTH) {
             throw new Error(`OPNET: CALL_STACK DEPTH EXCEEDED`);
@@ -596,7 +602,7 @@ export class ContractRuntime extends Logger {
         }
     }
 
-    private getAccountType(data: Buffer): Promise<number> {
+    private getAccountType(data: Buffer): Promise<AccountTypeResponse> {
         const reader = new BinaryReader(data);
         const targetAddress = reader.readAddress();
 
@@ -607,7 +613,15 @@ export class ContractRuntime extends Logger {
             accountType = 0;
         }
 
-        return Promise.resolve(accountType);
+        const isAddressWarm = this.touchedAddresses.has(targetAddress);
+        if (!isAddressWarm) {
+            this.touchedAddresses.add(targetAddress);
+        }
+
+        return Promise.resolve({
+            accountType,
+            isAddressWarm,
+        });
     }
 
     private getBlockHash(blockNumber: bigint): Promise<Buffer> {
