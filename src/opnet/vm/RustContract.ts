@@ -188,7 +188,7 @@ export class RustContract {
         }
     }
 
-    public decodeRevertData(revertDataBytes: Uint8Array): Error {
+    private decodeRevertData(revertDataBytes: Uint8Array): Error {
         if (this.startsWithErrorSelector(revertDataBytes)) {
             const decoder = new TextDecoder();
             const revertMessage = decoder.decode(revertDataBytes.slice(6));
