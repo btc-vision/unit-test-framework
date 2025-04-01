@@ -52,6 +52,8 @@ export class RustContract {
                 emit: this.params.emit,
                 inputs: this.params.inputs,
                 outputs: this.params.outputs,
+                accountType: this.params.accountType,
+                blockHash: this.params.blockHash,
             });
 
             this.instantiate();
