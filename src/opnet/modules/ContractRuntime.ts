@@ -41,6 +41,7 @@ export class ContractRuntime extends Logger {
 
     private callStack: AddressSet = new AddressSet();
     private touchedAddresses: AddressSet = new AddressSet();
+    private touchedBlocks: Set<bigint> = new Set();
     private statesBackup: FastBigIntMap = new FastBigIntMap();
 
     private readonly potentialBytecode?: Buffer;
@@ -138,6 +139,7 @@ export class ContractRuntime extends Logger {
 
         this.callStack.clear();
         this.touchedAddresses.clear()
+        this.touchedBlocks.clear()
         this.deployedContracts.clear();
     }
 
@@ -221,6 +223,7 @@ export class ContractRuntime extends Logger {
             events: response.events,
             callStack: this.callStack,
             touchedAddresses: this.touchedAddresses,
+            touchedBlocks: this.touchedBlocks,
             usedGas: response.usedGas,
         };
     }
@@ -331,6 +334,7 @@ export class ContractRuntime extends Logger {
             events: this.events,
             callStack: this.callStack,
             touchedAddresses: this.touchedAddresses,
+            touchedBlocks: this.touchedBlocks,
             usedGas: response.gasUsed,
         };
     }
@@ -368,6 +372,7 @@ export class ContractRuntime extends Logger {
             this.events = [];
             this.callStack = new AddressSet([this.address]);
             this.touchedAddresses = new AddressSet([this.address]);
+            this.touchedBlocks = new Set([Blockchain.blockNumber]);
 
             const params: ContractParameters = this.generateParams();
             this._contract = new RustContract(params);
@@ -537,6 +542,7 @@ export class ContractRuntime extends Logger {
         this.events = [...this.events, ...callResponse.events];
         this.callStack = this.callStack.combine(callResponse.callStack);
         this.touchedAddresses = this.touchedAddresses.combine(callResponse.touchedAddresses);
+        this.touchedBlocks = this.touchedBlocks.union(callResponse.touchedBlocks);
 
         if (this.callStack.size > MAX_CALL_STACK_DEPTH) {
             throw new Error(`OPNET: CALL_STACK DEPTH EXCEEDED`);
