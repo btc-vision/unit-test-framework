@@ -11,7 +11,7 @@ import { Logger } from '@btc-vision/logger';
 import {
     AccountTypeResponse,
     BitcoinNetworkRequest,
-    EnvironmentVariablesRequest,
+    EnvironmentVariablesRequest, NEW_STORAGE_SLOT_GAS_COST,
 } from '@btc-vision/op-vm';
 import bitcoin from '@btc-vision/bitcoin';
 import crypto from 'crypto';
@@ -22,8 +22,6 @@ import { ContractDetails } from '../interfaces/ContractDetails.js';
 import { ContractParameters, RustContract } from '../vm/RustContract.js';
 import { BytecodeManager } from './GetBytecode.js';
 import { FastBigIntMap } from './FastMap.js';
-
-const NEW_STORAGE_SLOT_GAS_COST = 200_000_000n;
 
 export class ContractRuntime extends Logger {
     public readonly logColor: string = '#39b2f3';
