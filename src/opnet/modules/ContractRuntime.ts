@@ -8,7 +8,11 @@ import {
     NetEvent,
 } from '@btc-vision/transaction';
 import { Logger } from '@btc-vision/logger';
-import { AccountTypeResponse, BitcoinNetworkRequest, EnvironmentVariablesRequest } from '@btc-vision/op-vm';
+import {
+    AccountTypeResponse,
+    BitcoinNetworkRequest,
+    EnvironmentVariablesRequest,
+} from '@btc-vision/op-vm';
 import bitcoin from '@btc-vision/bitcoin';
 import crypto from 'crypto';
 import { Blockchain } from '../../blockchain/Blockchain.js';
@@ -18,6 +22,8 @@ import { ContractDetails } from '../interfaces/ContractDetails.js';
 import { ContractParameters, RustContract } from '../vm/RustContract.js';
 import { BytecodeManager } from './GetBytecode.js';
 import { FastBigIntMap } from './FastMap.js';
+
+const NEW_STORAGE_SLOT_GAS_COST = 200_000_000n;
 
 export class ContractRuntime extends Logger {
     public readonly logColor: string = '#39b2f3';
@@ -138,8 +144,8 @@ export class ContractRuntime extends Logger {
         this.events = [];
 
         this.callStack.clear();
-        this.touchedAddresses.clear()
-        this.touchedBlocks.clear()
+        this.touchedAddresses.clear();
+        this.touchedBlocks.clear();
         this.deployedContracts.clear();
     }
 
@@ -206,7 +212,12 @@ export class ContractRuntime extends Logger {
             );
         }
 
-        const response: CallResponse = await this.execute(data as Buffer, sender, from, gasUsed);
+        const response: CallResponse = await this.executeCall(
+            data as Buffer,
+            sender,
+            from,
+            gasUsed,
+        );
         if (Blockchain.traceCalls) {
             this.log(`Call response: ${response.response}`);
         }
@@ -282,6 +293,21 @@ export class ContractRuntime extends Logger {
     }
 
     protected async execute(
+        calldata: Buffer | Uint8Array,
+        sender?: Address,
+        txOrigin?: Address,
+        gasUsed?: bigint,
+    ): Promise<CallResponse> {
+        const result = this.executeCall(calldata, sender, txOrigin, gasUsed);
+
+        this.states.forEach(() => {
+            this.gasUsed += NEW_STORAGE_SLOT_GAS_COST;
+        });
+
+        return result;
+    }
+
+    protected async executeCall(
         calldata: Buffer | Uint8Array,
         sender?: Address,
         txOrigin?: Address,
@@ -448,6 +474,7 @@ export class ContractRuntime extends Logger {
         const reader = new BinaryReader(data);
         const pointer = reader.readU256();
         const value = this.states.get(pointer);
+        const isSlotWarm = value != null;
 
         if (Blockchain.tracePointers) {
             this.log(`Attempting to load pointer ${pointer} - value ${value || 0n}`);
@@ -457,7 +484,7 @@ export class ContractRuntime extends Logger {
 
         const response: BinaryWriter = new BinaryWriter();
         response.writeU256(value || 0n);
-        response.writeBoolean(value !== undefined);
+        response.writeBoolean(isSlotWarm);
 
         return response.getBuffer();
     }
@@ -471,12 +498,14 @@ export class ContractRuntime extends Logger {
             this.log(`Attempting to store pointer ${pointer} - value ${value}`);
         }
 
+        const isSlotWarm = this.states.has(pointer)
+
         this.states.set(pointer, value);
 
         this.storedPointers++;
 
         const response: BinaryWriter = new BinaryWriter();
-        response.writeBoolean(true);
+        response.writeBoolean(isSlotWarm);
 
         return response.getBuffer();
     }
