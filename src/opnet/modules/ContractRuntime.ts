@@ -7,16 +7,17 @@ import {
     BinaryWriter,
     NetEvent,
 } from '@btc-vision/transaction';
+
 import { Logger } from '@btc-vision/logger';
 import {
     AccountTypeResponse,
     BitcoinNetworkRequest,
-    EnvironmentVariablesRequest, NEW_STORAGE_SLOT_GAS_COST,
+    EnvironmentVariablesRequest, NEW_STORAGE_SLOT_GAS_COST
 } from '@btc-vision/op-vm';
 import bitcoin from '@btc-vision/bitcoin';
 import crypto from 'crypto';
 import { Blockchain } from '../../blockchain/Blockchain.js';
-import { DISABLE_REENTRANCY_GUARD, MAX_CALL_STACK_DEPTH } from '../../contracts/configs.js';
+import { DISABLE_REENTRANCY_GUARD, MAX_CALL_STACK_DEPTH } from '../../contracts/configs';
 import { CallResponse } from '../interfaces/CallResponse.js';
 import { ContractDetails } from '../interfaces/ContractDetails.js';
 import { ContractParameters, RustContract } from '../vm/RustContract.js';
@@ -33,6 +34,7 @@ export class ContractRuntime extends Logger {
     public loadedPointers: bigint = 0n;
     public storedPointers: bigint = 0n;
 
+    protected transient: FastBigIntMap = new FastBigIntMap();
     protected states: FastBigIntMap = new FastBigIntMap();
     protected deploymentStates: FastBigIntMap = new FastBigIntMap();
 
@@ -404,7 +406,7 @@ export class ContractRuntime extends Logger {
             if (this._contract) {
                 try {
                     this._contract.dispose();
-                } catch {}
+                } catch { }
             }
 
             throw e;
@@ -487,6 +489,18 @@ export class ContractRuntime extends Logger {
         return response.getBuffer();
     }
 
+    private tLoad(data: Buffer): Buffer | Uint8Array {
+        const reader = new BinaryReader(data);
+        const pointer = reader.readU256();
+        const value = this.transient.get(pointer);
+
+        const response: BinaryWriter = new BinaryWriter();
+        response.writeU256(value || 0n);
+        response.writeBoolean(value !== undefined);
+
+        return response.getBuffer();
+    }
+
     private store(data: Buffer): Buffer | Uint8Array {
         const reader = new BinaryReader(data);
         const pointer: bigint = reader.readU256();
@@ -504,6 +518,19 @@ export class ContractRuntime extends Logger {
 
         const response: BinaryWriter = new BinaryWriter();
         response.writeBoolean(isSlotWarm);
+
+        return response.getBuffer();
+    }
+
+    private tStore(data: Buffer): Buffer | Uint8Array {
+        const reader = new BinaryReader(data);
+        const pointer: bigint = reader.readU256();
+        const value: bigint = reader.readU256();
+
+        this.transient.set(pointer, value);
+
+        const response: BinaryWriter = new BinaryWriter();
+        response.writeBoolean(true);
 
         return response.getBuffer();
     }
@@ -564,7 +591,7 @@ export class ContractRuntime extends Logger {
 
         try {
             ca.delete();
-        } catch {}
+        } catch { }
 
         this.events = [...this.events, ...callResponse.events];
         this.callStack = this.callStack.combine(callResponse.callStack);
@@ -696,6 +723,26 @@ export class ContractRuntime extends Logger {
                         resolve(this.store(data));
                     } else {
                         resolve(this.store(data));
+                    }
+                });
+            },
+            tLoad: (data: Buffer) => {
+                return new Promise((resolve) => {
+                    if (Blockchain.simulateRealEnvironment) {
+                        this.fakeLoad();
+                        resolve(this.tLoad(data));
+                    } else {
+                        resolve(this.tLoad(data));
+                    }
+                });
+            },
+            tStore: (data: Buffer) => {
+                return new Promise((resolve) => {
+                    if (Blockchain.simulateRealEnvironment) {
+                        this.fakeLoad();
+                        resolve(this.tStore(data));
+                    } else {
+                        resolve(this.tStore(data));
                     }
                 });
             },
