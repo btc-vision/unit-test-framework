@@ -43,7 +43,7 @@ export class ContractRuntime extends Logger {
     protected readonly deployedContracts: AddressMap<Buffer> = new AddressMap<Buffer>();
     protected readonly abiCoder = new ABICoder();
 
-    private callStack: AddressSet = new AddressSet();
+    private callStack: Address[] = [];
     private touchedAddresses: AddressSet = new AddressSet();
     private touchedBlocks: Set<bigint> = new Set();
     private statesBackup: FastBigIntMap = new FastBigIntMap();
@@ -141,7 +141,7 @@ export class ContractRuntime extends Logger {
 
         this.events = [];
 
-        this.callStack.clear();
+        this.callStack = [];
         this.touchedAddresses.clear();
         this.touchedBlocks.clear();
         this.deployedContracts.clear();
@@ -394,7 +394,7 @@ export class ContractRuntime extends Logger {
             }
 
             this.events = [];
-            this.callStack = new AddressSet([this.address]);
+            this.callStack = [this.address];
             this.touchedAddresses = new AddressSet([this.address]);
             this.touchedBlocks = new Set([Blockchain.blockNumber]);
 
@@ -508,12 +508,12 @@ export class ContractRuntime extends Logger {
         return response.getBuffer();
     }
 
-    private checkReentrancy(calls: AddressSet): void {
+    private checkReentrancy(calls: Address[]): void {
         if (DISABLE_REENTRANCY_GUARD) {
             return;
         }
 
-        if (calls.has(this.address)) {
+        if (calls.includes(this.address)) {
             throw new Error('OPNET: REENTRANCY DETECTED');
         }
     }
@@ -567,11 +567,11 @@ export class ContractRuntime extends Logger {
         } catch {}
 
         this.events = [...this.events, ...callResponse.events];
-        this.callStack = this.callStack.combine(callResponse.callStack);
+        this.callStack = this.callStack.concat(callResponse.callStack);
         this.touchedAddresses = this.touchedAddresses.combine(callResponse.touchedAddresses);
         this.touchedBlocks = this.touchedBlocks.union(callResponse.touchedBlocks);
 
-        if (this.callStack.size > MAX_CALL_STACK_DEPTH) {
+        if (this.callStack.length > MAX_CALL_STACK_DEPTH) {
             throw new Error(`OPNET: CALL_STACK DEPTH EXCEEDED`);
         }
 
