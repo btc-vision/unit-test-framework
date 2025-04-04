@@ -7,8 +7,9 @@
   "scripts": {
     "build": "gulp",
     "build:test-contract": "node scripts/buildTestContract.js",
-    "prepublish": "npm-run-all build",
+    "prepublish": "build",
     "test": "npm-run-all build:test-contract test:*",
+    "test:memory": "tsx test/e2e/memory/Memory.ts",
     "test:sha256": "tsx test/e2e/imports/sha256/Sha256.ts"
   },
   "repository": {
