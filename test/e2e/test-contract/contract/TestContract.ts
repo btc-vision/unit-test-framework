@@ -25,7 +25,7 @@ export class TestContract extends OP_NET {
         return writer;
     }
 
-    @method()
+    @method('uint32')
     @returns('bool')
     public callThenGrowMemory(calldata: Calldata): BytesWriter {
         const pages = calldata.readU32();

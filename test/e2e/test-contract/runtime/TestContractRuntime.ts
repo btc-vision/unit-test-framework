@@ -28,7 +28,7 @@ export class TestContractRuntime extends ContractRuntime {
 
     public async callThenGrowMemory(pages: number): Promise<boolean> {
         const calldata = new BinaryWriter();
-        calldata.writeSelector(this.getSelector('callThenGrowMemory'));
+        calldata.writeSelector(this.getSelector('callThenGrowMemory(uint32)'));
         calldata.writeU32(pages);
 
         const response = await this.execute(calldata.getBuffer());
