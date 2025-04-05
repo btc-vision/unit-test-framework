@@ -306,7 +306,11 @@ export class ContractRuntime extends Logger {
         this.touchedAddresses = new AddressSet([this.address]);
         this.touchedBlocks = new Set([Blockchain.blockNumber]);
 
-        const result = this.executeCall(calldata, sender, txOrigin, gasUsed);
+        const result = await this.executeCall(calldata, sender, txOrigin, gasUsed);
+
+        if (result.status != 0) {
+            throw this.contract.getRevertError();
+        }
 
         this.states.forEach(() => {
             this.gasUsed += NEW_STORAGE_SLOT_GAS_COST;
@@ -347,10 +351,6 @@ export class ContractRuntime extends Logger {
 
             return undefined;
         });
-
-        if (response && response.status !== 0) {
-            error = this.contract.getRevertError();
-        }
 
         if (error) {
             // Restore states
@@ -544,16 +544,22 @@ export class ContractRuntime extends Logger {
             this.info(`Attempting to call contract ${contractAddress.p2tr(Blockchain.network)}`);
         }
 
+        const contract: ContractRuntime = Blockchain.getContract(contractAddress);
+        const code = contract.bytecode;
+        const isAddressWarm = this.touchedAddresses.has(contractAddress);
+
         this.callStack.push(contractAddress);
         this.touchedAddresses.add(contractAddress);
 
         if (this.callStack.length > MAX_CALL_STACK_DEPTH) {
-            throw new Error(`OPNET: CALL_STACK DEPTH EXCEEDED`);
-        }
+            this.error(`OPNET: MAXIMUM CALL STACK DEPTH EXCEEDED`);
+            const writer = new BinaryWriter();
+            writer.writeBoolean(isAddressWarm);
+            writer.writeU64(0n);
+            writer.writeU32(1);
 
-        const contract: ContractRuntime = Blockchain.getContract(contractAddress);
-        const code = contract.bytecode;
-        const isAddressWarm = this.touchedAddresses.has(contractAddress);
+            return writer.getBuffer();
+        }
 
         const ca = new ContractRuntime({
             address: contractAddress,
