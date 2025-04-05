@@ -11,7 +11,8 @@ import { Logger } from '@btc-vision/logger';
 import {
     AccountTypeResponse,
     BitcoinNetworkRequest,
-    EnvironmentVariablesRequest, NEW_STORAGE_SLOT_GAS_COST,
+    EnvironmentVariablesRequest,
+    NEW_STORAGE_SLOT_GAS_COST,
 } from '@btc-vision/op-vm';
 import bitcoin from '@btc-vision/bitcoin';
 import crypto from 'crypto';
@@ -22,6 +23,7 @@ import { ContractDetails } from '../interfaces/ContractDetails.js';
 import { ContractParameters, RustContract } from '../vm/RustContract.js';
 import { BytecodeManager } from './GetBytecode.js';
 import { FastBigIntMap } from './FastMap.js';
+import { AddressStack } from './AddressStack';
 
 export class ContractRuntime extends Logger {
     public readonly logColor: string = '#39b2f3';
@@ -43,7 +45,7 @@ export class ContractRuntime extends Logger {
     protected readonly deployedContracts: AddressMap<Buffer> = new AddressMap<Buffer>();
     protected readonly abiCoder = new ABICoder();
 
-    private callStack: Address[] = [];
+    private callStack: AddressStack = new AddressStack();
     private touchedAddresses: AddressSet = new AddressSet();
     private touchedBlocks: Set<bigint> = new Set();
     private statesBackup: FastBigIntMap = new FastBigIntMap();
@@ -141,7 +143,7 @@ export class ContractRuntime extends Logger {
 
         this.events = [];
 
-        this.callStack = [];
+        this.callStack.clear();
         this.touchedAddresses.clear();
         this.touchedBlocks.clear();
         this.deployedContracts.clear();
@@ -394,7 +396,7 @@ export class ContractRuntime extends Logger {
             }
 
             this.events = [];
-            this.callStack = [this.address];
+            this.callStack.push(this.address);
             this.touchedAddresses = new AddressSet([this.address]);
             this.touchedBlocks = new Set([Blockchain.blockNumber]);
 
@@ -496,7 +498,7 @@ export class ContractRuntime extends Logger {
             this.log(`Attempting to store pointer ${pointer} - value ${value}`);
         }
 
-        const isSlotWarm = this.states.has(pointer)
+        const isSlotWarm = this.states.has(pointer);
 
         this.states.set(pointer, value);
 
@@ -508,7 +510,7 @@ export class ContractRuntime extends Logger {
         return response.getBuffer();
     }
 
-    private checkReentrancy(calls: Address[]): void {
+    private checkReentrancy(calls: AddressStack): void {
         if (DISABLE_REENTRANCY_GUARD) {
             return;
         }
