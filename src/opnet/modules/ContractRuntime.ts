@@ -301,6 +301,11 @@ export class ContractRuntime extends Logger {
         txOrigin?: Address,
         gasUsed?: bigint,
     ): Promise<CallResponse> {
+        this.events = [];
+        this.callStack.push(this.address);
+        this.touchedAddresses = new AddressSet([this.address]);
+        this.touchedBlocks = new Set([Blockchain.blockNumber]);
+
         const result = this.executeCall(calldata, sender, txOrigin, gasUsed);
 
         this.states.forEach(() => {
@@ -399,11 +404,6 @@ export class ContractRuntime extends Logger {
                     this.warn(strErr);
                 }
             }
-
-            this.events = [];
-            this.callStack.push(this.address);
-            this.touchedAddresses = new AddressSet([this.address]);
-            this.touchedBlocks = new Set([Blockchain.blockNumber]);
 
             const params: ContractParameters = this.generateParams();
             this._contract = new RustContract(params);
@@ -544,6 +544,13 @@ export class ContractRuntime extends Logger {
             this.info(`Attempting to call contract ${contractAddress.p2tr(Blockchain.network)}`);
         }
 
+        this.callStack.push(contractAddress);
+        this.touchedAddresses.add(contractAddress);
+
+        if (this.callStack.length > MAX_CALL_STACK_DEPTH) {
+            throw new Error(`OPNET: CALL_STACK DEPTH EXCEEDED`);
+        }
+
         const contract: ContractRuntime = Blockchain.getContract(contractAddress);
         const code = contract.bytecode;
         const isAddressWarm = this.touchedAddresses.has(contractAddress);
@@ -555,6 +562,11 @@ export class ContractRuntime extends Logger {
             gasLimit: contract.gasMax,
             gasUsed: gasUsed,
         });
+
+        ca.events = this.events;
+        ca.callStack = this.callStack;
+        ca.touchedAddresses = this.touchedAddresses;
+        ca.touchedBlocks = this.touchedBlocks;
 
         ca.preserveState();
         ca.setStates(contract.getStates());
@@ -575,10 +587,10 @@ export class ContractRuntime extends Logger {
             ca.delete();
         } catch {}
 
-        this.events = [...this.events, ...callResponse.events];
-        this.callStack = this.callStack.concat(callResponse.callStack);
-        this.touchedAddresses = this.touchedAddresses.combine(callResponse.touchedAddresses);
-        this.touchedBlocks = this.touchedBlocks.union(callResponse.touchedBlocks);
+        this.events = callResponse.events;
+        this.callStack = callResponse.callStack;
+        this.touchedAddresses = callResponse.touchedAddresses;
+        this.touchedBlocks = callResponse.touchedBlocks;
 
         if (this.callStack.length > MAX_CALL_STACK_DEPTH) {
             throw new Error(`OPNET: CALL_STACK DEPTH EXCEEDED`);
