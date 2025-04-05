@@ -11,7 +11,8 @@ import { Logger } from '@btc-vision/logger';
 import {
     AccountTypeResponse,
     BitcoinNetworkRequest,
-    EnvironmentVariablesRequest, NEW_STORAGE_SLOT_GAS_COST,
+    EnvironmentVariablesRequest,
+    NEW_STORAGE_SLOT_GAS_COST,
 } from '@btc-vision/op-vm';
 import bitcoin from '@btc-vision/bitcoin';
 import crypto from 'crypto';
@@ -27,6 +28,7 @@ export class ContractRuntime extends Logger {
     public readonly logColor: string = '#39b2f3';
 
     public gasUsed: bigint = 0n;
+    public memoryPagesUsed: bigint = 0n;
     public address: Address;
     public readonly deployer: Address;
 
@@ -200,6 +202,7 @@ export class ContractRuntime extends Logger {
         sender: Address,
         from: Address,
         gasUsed: bigint,
+        memoryPagesUsed: bigint,
     ): Promise<CallResponse> {
         const reader = new BinaryReader(data);
         const selector: number = reader.readSelector();
@@ -215,6 +218,7 @@ export class ContractRuntime extends Logger {
             sender,
             from,
             gasUsed,
+            memoryPagesUsed,
         );
         if (Blockchain.traceCalls) {
             this.log(`Call response: ${response.response}`);
@@ -310,6 +314,7 @@ export class ContractRuntime extends Logger {
         sender?: Address,
         txOrigin?: Address,
         gasUsed?: bigint,
+        memoryPagesUsed: bigint = 0n,
     ): Promise<CallResponse> {
         this.gasUsed = 0n;
 
@@ -317,6 +322,7 @@ export class ContractRuntime extends Logger {
         await this.deployContract();
 
         this.gasUsed = gasUsed || 0n;
+        this.memoryPagesUsed = memoryPagesUsed;
         this.loadContract();
 
         if (sender || txOrigin) {
@@ -496,7 +502,7 @@ export class ContractRuntime extends Logger {
             this.log(`Attempting to store pointer ${pointer} - value ${value}`);
         }
 
-        const isSlotWarm = this.states.has(pointer)
+        const isSlotWarm = this.states.has(pointer);
 
         this.states.set(pointer, value);
 
@@ -525,6 +531,7 @@ export class ContractRuntime extends Logger {
 
         const reader = new BinaryReader(data);
         const gasUsed: bigint = reader.readU64();
+        const memoryPagesUsed: bigint = BigInt(reader.readU32());
         const contractAddress: Address = reader.readAddress();
         const calldata: Uint8Array = reader.readBytesWithLength();
 
@@ -558,6 +565,7 @@ export class ContractRuntime extends Logger {
             this.address,
             Blockchain.txOrigin,
             gasUsed,
+            memoryPagesUsed,
         );
 
         contract.setStates(ca.getStates());
@@ -675,6 +683,7 @@ export class ContractRuntime extends Logger {
             bytecode: this.bytecode,
             gasMax: this.gasMax,
             gasUsed: this.gasUsed,
+            memoryPagesUsed: this.memoryPagesUsed,
             network: this.getNetwork(),
             isDebugMode: this.isDebugMode,
             contractManager: Blockchain.contractManager,

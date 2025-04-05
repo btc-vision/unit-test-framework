@@ -26,6 +26,49 @@ export class TestContractRuntime extends ContractRuntime {
         return reader.readBytes(32);
     }
 
+    public async callThenGrowMemory(pages: number): Promise<boolean> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.getSelector('callThenGrowMemory(uint32)'));
+        calldata.writeU32(pages);
+
+        const response = await this.execute(calldata.getBuffer());
+        this.handleResponse(response);
+
+        const reader = new BinaryReader(response.response);
+        return reader.readBoolean();
+    }
+
+    public async growMemoryThenRecursiveCall(pages: number, numberOfCalls: number): Promise<void> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.getSelector('growMemoryThenRecursiveCall(uint32,uint32)'));
+        calldata.writeU32(pages);
+        calldata.writeU32(numberOfCalls);
+
+        const response = await this.execute(calldata.getBuffer());
+        this.handleResponse(response);
+    }
+
+    public async growMemory(pages: number): Promise<boolean> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.getSelector('growMemory(uint32)'));
+        calldata.writeU32(pages);
+
+        const response = await this.execute(calldata.getBuffer());
+        this.handleResponse(response);
+
+        const reader = new BinaryReader(response.response);
+        return reader.readBoolean();
+    }
+
+    public async recursiveCall(numberOfCalls: number): Promise<void> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.getSelector('recursiveCall(uint32)'));
+        calldata.writeU32(numberOfCalls);
+
+        const response = await this.execute(calldata.getBuffer());
+        this.handleResponse(response);
+    }
+
     private getSelector(signature: string): number {
         return Number(`0x${this.abiCoder.encodeSelector(signature)}`);
     }
