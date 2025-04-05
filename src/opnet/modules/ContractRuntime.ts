@@ -11,8 +11,7 @@ import { Logger } from '@btc-vision/logger';
 import {
     AccountTypeResponse,
     BitcoinNetworkRequest,
-    EnvironmentVariablesRequest,
-    NEW_STORAGE_SLOT_GAS_COST,
+    EnvironmentVariablesRequest, NEW_STORAGE_SLOT_GAS_COST,
 } from '@btc-vision/op-vm';
 import bitcoin from '@btc-vision/bitcoin';
 import crypto from 'crypto';
@@ -217,7 +216,6 @@ export class ContractRuntime extends Logger {
             from,
             gasUsed,
         );
-
         if (Blockchain.traceCalls) {
             this.log(`Call response: ${response.response}`);
         }
@@ -498,7 +496,7 @@ export class ContractRuntime extends Logger {
             this.log(`Attempting to store pointer ${pointer} - value ${value}`);
         }
 
-        const isSlotWarm = this.states.has(pointer);
+        const isSlotWarm = this.states.has(pointer)
 
         this.states.set(pointer, value);
 
@@ -521,79 +519,71 @@ export class ContractRuntime extends Logger {
     }
 
     private async call(data: Buffer): Promise<Buffer | Uint8Array> {
-        try {
-            if (!this._contract) {
-                throw new Error('Contract not initialized');
-            }
-
-            const reader = new BinaryReader(data);
-            const gasUsed: bigint = reader.readU64();
-            const contractAddress: Address = reader.readAddress();
-            const calldata: Uint8Array = reader.readBytesWithLength();
-
-            if (!contractAddress) {
-                throw new Error(`No contract address specified in call?`);
-            }
-
-            if (Blockchain.traceCalls) {
-                this.info(
-                    `Attempting to call contract ${contractAddress.p2tr(Blockchain.network)}`,
-                );
-            }
-
-            const contract: ContractRuntime = Blockchain.getContract(contractAddress);
-            const code = contract.bytecode;
-            const isAddressWarm = this.touchedAddresses.has(contractAddress);
-
-            const ca = new ContractRuntime({
-                address: contractAddress,
-                deployer: contract.deployer,
-                bytecode: code,
-                gasLimit: contract.gasMax,
-                gasUsed: gasUsed,
-            });
-
-            ca.preserveState();
-            ca.setStates(contract.getStates());
-
-            await ca.init();
-
-            const callResponse: CallResponse = await ca.onCall(
-                calldata,
-                this.address,
-                Blockchain.txOrigin,
-                gasUsed,
-            );
-
-            contract.setStates(ca.getStates());
-
-            try {
-                ca.delete();
-            } catch {}
-
-            this.events = [...this.events, ...callResponse.events];
-            this.callStack = this.callStack.combine(callResponse.callStack);
-            this.touchedAddresses = this.touchedAddresses.combine(callResponse.touchedAddresses);
-            this.touchedBlocks = this.touchedBlocks.union(callResponse.touchedBlocks);
-
-            if (this.callStack.size > MAX_CALL_STACK_DEPTH) {
-                throw new Error(`OPNET: CALL_STACK DEPTH EXCEEDED`);
-            }
-
-            this.checkReentrancy(callResponse.callStack);
-
-            const writer = new BinaryWriter();
-            writer.writeBoolean(isAddressWarm);
-            writer.writeU64(callResponse.usedGas);
-            writer.writeU32(callResponse.status);
-            writer.writeBytes(callResponse.response);
-
-            return writer.getBuffer();
-        } catch (e) {
-            console.log(e);
-
-            throw e;
+        if (!this._contract) {
+            throw new Error('Contract not initialized');
         }
+
+        const reader = new BinaryReader(data);
+        const gasUsed: bigint = reader.readU64();
+        const contractAddress: Address = reader.readAddress();
+        const calldata: Uint8Array = reader.readBytesWithLength();
+
+        if (!contractAddress) {
+            throw new Error(`No contract address specified in call?`);
+        }
+
+        if (Blockchain.traceCalls) {
+            this.info(`Attempting to call contract ${contractAddress.p2tr(Blockchain.network)}`);
+        }
+
+        const contract: ContractRuntime = Blockchain.getContract(contractAddress);
+        const code = contract.bytecode;
+        const isAddressWarm = this.touchedAddresses.has(contractAddress);
+
+        const ca = new ContractRuntime({
+            address: contractAddress,
+            deployer: contract.deployer,
+            bytecode: code,
+            gasLimit: contract.gasMax,
+            gasUsed: gasUsed,
+        });
+
+        ca.preserveState();
+        ca.setStates(contract.getStates());
+
+        await ca.init();
+
+        const callResponse: CallResponse = await ca.onCall(
+            calldata,
+            this.address,
+            Blockchain.txOrigin,
+            gasUsed,
+        );
+
+        contract.setStates(ca.getStates());
+
+        try {
+            ca.delete();
+        } catch {}
+
+        this.events = [...this.events, ...callResponse.events];
+        this.callStack = this.callStack.combine(callResponse.callStack);
+        this.touchedAddresses = this.touchedAddresses.combine(callResponse.touchedAddresses);
+        this.touchedBlocks = this.touchedBlocks.union(callResponse.touchedBlocks);
+
+        if (this.callStack.size > MAX_CALL_STACK_DEPTH) {
+            throw new Error(`OPNET: CALL_STACK DEPTH EXCEEDED`);
+        }
+
+        this.checkReentrancy(callResponse.callStack);
+
+        const writer = new BinaryWriter();
+        writer.writeBoolean(isAddressWarm);
+        writer.writeU64(callResponse.usedGas);
+        writer.writeU32(callResponse.status);
+        writer.writeBytes(callResponse.response);
+
+        return writer.getBuffer();
     }
 
     private onLog(data: Buffer | Uint8Array): void {
