@@ -52,4 +52,14 @@ await opnet('Memory tests', async (vm: OPNetUnit) => {
     //         await contract.growMemoryThenRecursiveCall(511, 1);
     //     }).toThrow("No more memory pages available")
     // });
+
+    await vm.it('should successfully do the maximum allowed nested calls', async () => {
+        await contract.recursiveCall(19);
+    });
+
+    await vm.it('should fail to do more nested calls than the maximum allowed', async () => {
+        await Assert.expect(async () => {
+            await contract.recursiveCall(20);
+        }).toThrow()
+    });
 });
