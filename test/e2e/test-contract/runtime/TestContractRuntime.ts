@@ -3,6 +3,21 @@ import { BytecodeManager, CallResponse, ContractRuntime } from '../../../../src'
 
 export class TestContractRuntime extends ContractRuntime {
     private readonly sha256Selector: number = this.getSelector('sha256(bytes)');
+    private readonly callThenGrowMemorySelector: number = this.getSelector(
+        'callThenGrowMemory(uint32)',
+    );
+    private readonly growMemoryThenRecursiveCallSelector: number = this.getSelector(
+        'growMemoryThenRecursiveCall(uint32,uint32)',
+    );
+    private readonly growMemorySelector: number = this.getSelector('growMemory(uint32)');
+    private readonly recursiveCallSelector: number = this.getSelector('recursiveCall(uint32)');
+    private readonly modifyStateThenCallFunctionModifyingStateThatRevertsSelector: number =
+        this.getSelector(
+            'modifyStateThenCallFunctionModifyingStateThatReverts(bytes32,bytes32,bytes32)',
+        );
+    private readonly modifyStateThenRevertSelector: number = this.getSelector(
+        'modifyStateThenRevert(bytes32,bytes32)',
+    );
 
     public constructor(deployer: Address, address: Address, gasLimit: bigint = 350_000_000_000n) {
         super({
@@ -28,7 +43,7 @@ export class TestContractRuntime extends ContractRuntime {
 
     public async callThenGrowMemory(pages: number): Promise<boolean> {
         const calldata = new BinaryWriter();
-        calldata.writeSelector(this.getSelector('callThenGrowMemory(uint32)'));
+        calldata.writeSelector(this.callThenGrowMemorySelector);
         calldata.writeU32(pages);
 
         const response = await this.execute(calldata.getBuffer());
@@ -40,7 +55,7 @@ export class TestContractRuntime extends ContractRuntime {
 
     public async growMemoryThenRecursiveCall(pages: number, numberOfCalls: number): Promise<void> {
         const calldata = new BinaryWriter();
-        calldata.writeSelector(this.getSelector('growMemoryThenRecursiveCall(uint32,uint32)'));
+        calldata.writeSelector(this.growMemoryThenRecursiveCallSelector);
         calldata.writeU32(pages);
         calldata.writeU32(numberOfCalls);
 
@@ -50,7 +65,7 @@ export class TestContractRuntime extends ContractRuntime {
 
     public async growMemory(pages: number): Promise<boolean> {
         const calldata = new BinaryWriter();
-        calldata.writeSelector(this.getSelector('growMemory(uint32)'));
+        calldata.writeSelector(this.growMemorySelector);
         calldata.writeU32(pages);
 
         const response = await this.execute(calldata.getBuffer());
@@ -62,7 +77,7 @@ export class TestContractRuntime extends ContractRuntime {
 
     public async recursiveCall(numberOfCalls: number): Promise<void> {
         const calldata = new BinaryWriter();
-        calldata.writeSelector(this.getSelector('recursiveCall(uint32)'));
+        calldata.writeSelector(this.recursiveCallSelector);
         calldata.writeU32(numberOfCalls);
 
         const response = await this.execute(calldata.getBuffer());
@@ -75,11 +90,7 @@ export class TestContractRuntime extends ContractRuntime {
         secondStorageValue: Uint8Array,
     ): Promise<Uint8Array> {
         const calldata = new BinaryWriter();
-        calldata.writeSelector(
-            this.getSelector(
-                'modifyStateThenCallFunctionModifyingStateThatReverts(bytes32,bytes32,bytes32)',
-            ),
-        );
+        calldata.writeSelector(this.modifyStateThenCallFunctionModifyingStateThatRevertsSelector);
         calldata.writeBytes(storageKey);
         calldata.writeBytes(firstStorageValue);
         calldata.writeBytes(secondStorageValue);
@@ -96,7 +107,7 @@ export class TestContractRuntime extends ContractRuntime {
         storageValue: Uint8Array,
     ): Promise<void> {
         const calldata = new BinaryWriter();
-        calldata.writeSelector(this.getSelector('modifyStateThenRevert(bytes32,bytes32)'));
+        calldata.writeSelector(this.modifyStateThenRevertSelector);
         calldata.writeBytes(storageKey);
         calldata.writeBytes(storageValue);
 
