@@ -23,6 +23,7 @@ import { ContractParameters, RustContract } from '../vm/RustContract.js';
 import { BytecodeManager } from './GetBytecode.js';
 import { FastBigIntMap } from './FastMap.js';
 import { AddressStack } from './AddressStack';
+import { clearTimeout } from 'node:timers';
 
 export class ContractRuntime extends Logger {
     public readonly logColor: string = '#39b2f3';
@@ -55,6 +56,8 @@ export class ContractRuntime extends Logger {
     private touchedBlocks: Set<bigint> = new Set();
     private statesBackup: FastBigIntMap = new FastBigIntMap();
     private totalEventLength: number = 0;
+
+    private disposeTimeout: NodeJS.Timeout | undefined;
 
     // global states
     private readonly potentialBytecode?: Buffer;
@@ -250,6 +253,8 @@ export class ContractRuntime extends Logger {
     public dispose(): void {
         if (this._contract) {
             this._contract.dispose();
+
+            clearTimeout(this.disposeTimeout);
         }
     }
 
@@ -400,7 +405,13 @@ export class ContractRuntime extends Logger {
             this.dispose();
 
             const params: ContractParameters = this.generateParams();
+
             this._contract = new RustContract(params);
+            const id = this._contract.id;
+
+            this.disposeTimeout = setTimeout(() => {
+                this.error(`Contract #${id} (${this.address}) was never disposed.`);
+            }, 10_000);
         } catch (e) {
             if (this._contract) {
                 try {
