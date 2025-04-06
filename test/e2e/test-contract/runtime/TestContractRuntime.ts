@@ -69,6 +69,41 @@ export class TestContractRuntime extends ContractRuntime {
         this.handleResponse(response);
     }
 
+    public async modifyStateThenCallFunctionModifyingStateThatReverts(
+        storageKey: Uint8Array,
+        firstStorageValue: Uint8Array,
+        secondStorageValue: Uint8Array,
+    ): Promise<Uint8Array> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(
+            this.getSelector(
+                'modifyStateThenCallFunctionModifyingStateThatReverts(bytes32,bytes32,bytes32)',
+            ),
+        );
+        calldata.writeBytes(storageKey);
+        calldata.writeBytes(firstStorageValue);
+        calldata.writeBytes(secondStorageValue);
+
+        const response = await this.execute(calldata.getBuffer());
+        this.handleResponse(response);
+
+        const reader = new BinaryReader(response.response);
+        return reader.readBytes(32);
+    }
+
+    public async modifyStateThenRevert(
+        storageKey: Uint8Array,
+        storageValue: Uint8Array,
+    ): Promise<void> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.getSelector('modifyStateThenRevert(bytes32,bytes32)'));
+        calldata.writeBytes(storageKey);
+        calldata.writeBytes(storageValue);
+
+        const response = await this.execute(calldata.getBuffer());
+        this.handleResponse(response);
+    }
+
     private getSelector(signature: string): number {
         return Number(`0x${this.abiCoder.encodeSelector(signature)}`);
     }

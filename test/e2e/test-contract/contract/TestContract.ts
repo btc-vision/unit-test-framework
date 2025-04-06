@@ -1,11 +1,13 @@
 import {
+    Address,
     Blockchain,
+    BytesReader,
     BytesWriter,
     Calldata,
     encodeSelector,
     OP_NET,
 } from '@btc-vision/btc-runtime/runtime';
-import { sha256 } from '@btc-vision/btc-runtime/runtime/env/global';
+import { callContract, getCallResult, sha256 } from '@btc-vision/btc-runtime/runtime/env/global';
 
 @final
 export class TestContract extends OP_NET {
@@ -81,6 +83,7 @@ export class TestContract extends OP_NET {
         const numberOfCalls = calldata.readU32();
 
         if (numberOfCalls == 0) {
+            // throw new Error("die");
             return new BytesWriter(0);
         }
 
@@ -91,5 +94,58 @@ export class TestContract extends OP_NET {
         Blockchain.call(this.address, recursiveCallCalldata);
 
         return new BytesWriter(0);
+    }
+
+    @method('bytes32', 'bytes32', 'bytes32')
+    @returns('bytes32')
+    public modifyStateThenCallFunctionModifyingStateThatReverts(calldata: Calldata): BytesWriter {
+        const storageKey = calldata.readBytes(32);
+        const firstStorageValue = calldata.readBytes(32);
+        const secondStorageValue = calldata.readBytes(32);
+
+        Blockchain.setStorageAt(storageKey, firstStorageValue);
+
+        const subCallCalldata = new BytesWriter(4 + 32 + 32);
+        subCallCalldata.writeSelector(encodeSelector('modifyStateThenRevert(bytes32,bytes32)'));
+        subCallCalldata.writeBytes(storageKey);
+        subCallCalldata.writeBytes(secondStorageValue);
+
+        this.callDontRevertOnFailure(this.address, subCallCalldata);
+
+        const finalStorageValue = Blockchain.getStorageAt(storageKey);
+
+        const result = new BytesWriter(32);
+        result.writeBytes(finalStorageValue);
+        return result;
+    }
+
+    private callDontRevertOnFailure(
+        destinationContract: Address,
+        calldata: BytesWriter,
+    ): BytesReader {
+        const resultLengthBuffer = new ArrayBuffer(32);
+        callContract(
+            destinationContract.buffer,
+            calldata.getBuffer().buffer,
+            calldata.bufferLength(),
+            resultLengthBuffer,
+        );
+
+        const reader = new BytesReader(Uint8Array.wrap(resultLengthBuffer));
+        const resultLength = reader.readU32(true);
+        const resultBuffer = new ArrayBuffer(resultLength);
+        getCallResult(0, resultLength, resultBuffer);
+
+        return new BytesReader(Uint8Array.wrap(resultBuffer));
+    }
+
+    @method('bytes32', 'bytes32')
+    public modifyStateThenRevert(calldata: Calldata): BytesWriter {
+        const storageKey = calldata.readBytes(32);
+        const storageValue = calldata.readBytes(32);
+
+        Blockchain.setStorageAt(storageKey, storageValue);
+
+        throw new Error('die');
     }
 }

@@ -11,7 +11,8 @@
     "test": "npm-run-all build:test-contract test:*",
     "test:call-depth": "tsx test/e2e/limits/CallDepth.test.ts",
     "test:memory": "tsx test/e2e/limits/Memory.test.ts",
-    "test:sha256": "tsx test/e2e/imports/Sha256.test.ts"
+    "test:sha256": "tsx test/e2e/imports/Sha256.test.ts",
+    "test:storage": "tsx test/e2e/imports/Storage.test.ts"
   },
   "repository": {
     "type": "git",
