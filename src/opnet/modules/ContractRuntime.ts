@@ -424,7 +424,7 @@ export class ContractRuntime extends Logger {
                 } catch {}
             }
 
-            this.warn(`Rust panicked: ${e}`);
+            this.warn(`Rust panicked during instantiation: ${e}`);
 
             throw e;
         }
