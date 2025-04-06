@@ -315,6 +315,7 @@ export class ContractRuntime extends Logger {
         this.states.forEach(() => {
             this.gasUsed += NEW_STORAGE_SLOT_GAS_COST;
         });
+        result.usedGas = this.gasUsed;
 
         return result;
     }
