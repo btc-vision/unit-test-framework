@@ -30,7 +30,9 @@ await opnet('Storage tests', async (vm: OPNetUnit) => {
         Blockchain.dispose();
     });
 
-    await vm.it('should revert only state modifications done in a single call frame that reverts', async () => {
+    await vm.it(
+        'should revert only state modifications done in a single call frame that reverts',
+        async () => {
             let result = await contract.modifyStateThenCallFunctionModifyingStateThatReverts(
                 A_STORAGE_KEY,
                 A_STORAGE_VALUE,
@@ -41,11 +43,10 @@ await opnet('Storage tests', async (vm: OPNetUnit) => {
         },
     );
 
-    await vm.it('should persist state modifications done in a call to the parent context', async () => {
-            let result = await contract.callThenModifyState(
-                A_STORAGE_KEY,
-                A_STORAGE_VALUE,
-            );
+    await vm.it(
+        'should persist state modifications done in a call to the parent context',
+        async () => {
+            let result = await contract.callThenModifyState(A_STORAGE_KEY, A_STORAGE_VALUE);
 
             Assert.expect(areBytesEqual(result, A_STORAGE_VALUE)).toEqual(true);
         },
