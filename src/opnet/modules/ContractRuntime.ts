@@ -410,8 +410,10 @@ export class ContractRuntime extends Logger {
             const id = this._contract.id;
 
             this.disposeTimeout = setTimeout(() => {
-                this.error(`Contract #${id} (${this.address}) was never disposed.`);
-            }, 10_000);
+                this.warn(
+                    `Contract #${id} (${this.address}) was never disposed. (memory leak detected)`,
+                );
+            }, 15_000);
         } catch (e) {
             if (this._contract) {
                 try {
