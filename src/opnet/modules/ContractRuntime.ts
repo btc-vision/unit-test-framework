@@ -255,6 +255,7 @@ export class ContractRuntime extends Logger {
             this._contract.dispose();
 
             clearTimeout(this.disposeTimeout);
+            this.disposeTimeout = null;
         }
     }
 
@@ -402,7 +403,9 @@ export class ContractRuntime extends Logger {
                 this.states = new FastBigIntMap(this.deploymentStates);
             }
 
-            this.dispose();
+            if (this.disposeTimeout) {
+                throw new Error('OPNET: Impossible state: Contract was never disposed.');
+            }
 
             const params: ContractParameters = this.generateParams();
 
@@ -420,6 +423,8 @@ export class ContractRuntime extends Logger {
                     this._contract.dispose();
                 } catch {}
             }
+
+            this.warn(`Rust panicked: ${e}`);
 
             throw e;
         }
