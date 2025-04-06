@@ -12,14 +12,13 @@ import {
     AccountTypeResponse,
     BitcoinNetworkRequest,
     EnvironmentVariablesRequest,
-    NEW_STORAGE_SLOT_GAS_COST,
 } from '@btc-vision/op-vm';
 import bitcoin from '@btc-vision/bitcoin';
 import crypto from 'crypto';
 import { Blockchain } from '../../blockchain/Blockchain.js';
-import { DISABLE_REENTRANCY_GUARD, MAX_CALL_STACK_DEPTH } from '../../contracts/configs.js';
+import { CONSENSUS } from '../../contracts/configs.js';
 import { CallResponse } from '../interfaces/CallResponse.js';
-import { ContractDetails } from '../interfaces/ContractDetails.js';
+import { ContractDetails, StateOverride } from '../interfaces/ContractDetails.js';
 import { ContractParameters, RustContract } from '../vm/RustContract.js';
 import { BytecodeManager } from './GetBytecode.js';
 import { FastBigIntMap } from './FastMap.js';
@@ -28,32 +27,40 @@ import { AddressStack } from './AddressStack';
 export class ContractRuntime extends Logger {
     public readonly logColor: string = '#39b2f3';
 
+    // internal states
     public gasUsed: bigint = 0n;
     public memoryPagesUsed: bigint = 0n;
-    public address: Address;
-    public readonly deployer: Address;
-
     public loadedPointers: bigint = 0n;
     public storedPointers: bigint = 0n;
 
+    // global states
+    public address: Address;
+    public readonly deployer: Address;
+
     protected states: FastBigIntMap = new FastBigIntMap();
     protected deploymentStates: FastBigIntMap = new FastBigIntMap();
-
     protected shouldPreserveState: boolean = true;
+
+    // internal states
     protected events: NetEvent[] = [];
 
-    protected readonly gasMax: bigint = 100_000_000_000n;
+    // global states
+    protected readonly gasMax: bigint = 100_000_000_000_000n;
     protected readonly deployedContracts: AddressMap<Buffer> = new AddressMap<Buffer>();
     protected readonly abiCoder = new ABICoder();
 
+    // internal states
     private callStack: AddressStack = new AddressStack();
     private touchedAddresses: AddressSet = new AddressSet();
     private touchedBlocks: Set<bigint> = new Set();
     private statesBackup: FastBigIntMap = new FastBigIntMap();
+    private totalEventLength: number = 0;
 
+    // global states
     private readonly potentialBytecode?: Buffer;
     private readonly deploymentCalldata?: Buffer;
 
+    // debug
     private readonly isDebugMode = true;
 
     protected constructor(details: ContractDetails) {
@@ -64,6 +71,7 @@ export class ContractRuntime extends Logger {
 
         this.potentialBytecode = details.bytecode;
         this.deploymentCalldata = details.deploymentCalldata;
+        this.memoryPagesUsed = details.memoryPagesUsed || 0n;
 
         if (details.gasLimit) {
             this.gasMax = details.gasLimit;
@@ -115,6 +123,16 @@ export class ContractRuntime extends Logger {
 
     private get p2trAddress(): string {
         return this.address.p2tr(Blockchain.network);
+    }
+
+    public applyStatesOverride(override: StateOverride): void {
+        this.events = override.events;
+        this.callStack = override.callStack;
+        this.touchedAddresses = override.touchedAddresses;
+        this.touchedBlocks = override.touchedBlocks;
+        this.totalEventLength = override.totalEventLength;
+        this.loadedPointers = override.loadedPointers;
+        this.storedPointers = override.storedPointers;
     }
 
     public preserveState(): void {
@@ -221,25 +239,12 @@ export class ContractRuntime extends Logger {
             gasUsed,
             memoryPagesUsed,
         );
+
         if (Blockchain.traceCalls) {
             this.log(`Call response: ${response.response}`);
         }
 
-        this.dispose();
-
-        if (response.error) {
-            throw this.handleError(response.error);
-        }
-
-        return {
-            status: response.status,
-            response: response.response,
-            events: response.events,
-            callStack: this.callStack,
-            touchedAddresses: this.touchedAddresses,
-            touchedBlocks: this.touchedBlocks,
-            usedGas: response.usedGas,
-        };
+        return response;
     }
 
     public dispose(): void {
@@ -262,8 +267,8 @@ export class ContractRuntime extends Logger {
         }
 
         const statesBackup = new FastBigIntMap(this.states);
-        this.loadContract();
 
+        this.loadContract();
         this.setEnvironment(this.deployer, this.deployer);
 
         const calldata = this.deploymentCalldata || Buffer.alloc(0);
@@ -273,15 +278,12 @@ export class ContractRuntime extends Logger {
             error = e as Error;
         });
 
-        if (response && response.status !== 0) {
-            error = this.contract.getRevertError();
-        }
-
-        if (error) {
-            // Restore states
+        // Restore states
+        if (error || response?.status !== 0) {
             this.states = statesBackup;
         }
 
+        // Fatal error in rust or js
         if (response == null) {
             throw error;
         }
@@ -295,28 +297,30 @@ export class ContractRuntime extends Logger {
         return this.deploymentStates;
     }
 
+    protected resetInternalStates(): void {
+        this.gasUsed = 0n;
+
+        this.loadedPointers = 0n;
+        this.storedPointers = 0n;
+        this.totalEventLength = 0;
+
+        this.events = [];
+        this.callStack = new AddressStack();
+        this.callStack.push(this.address);
+
+        this.touchedAddresses = new AddressSet([this.address]);
+        this.touchedBlocks = new Set([Blockchain.blockNumber]);
+    }
+
     protected async execute(
         calldata: Buffer | Uint8Array,
         sender?: Address,
         txOrigin?: Address,
         gasUsed?: bigint,
     ): Promise<CallResponse> {
-        this.events = [];
-        this.callStack.push(this.address);
-        this.touchedAddresses = new AddressSet([this.address]);
-        this.touchedBlocks = new Set([Blockchain.blockNumber]);
+        this.resetInternalStates();
 
-        const result = await this.executeCall(calldata, sender, txOrigin, gasUsed);
-
-        if (result.status != 0) {
-            throw this.contract.getRevertError();
-        }
-
-        this.states.forEach(() => {
-            this.gasUsed += NEW_STORAGE_SLOT_GAS_COST;
-        });
-
-        return result;
+        return await this.executeCall(calldata, sender, txOrigin, gasUsed);
     }
 
     protected async executeCall(
@@ -326,24 +330,16 @@ export class ContractRuntime extends Logger {
         gasUsed?: bigint,
         memoryPagesUsed: bigint = 0n,
     ): Promise<CallResponse> {
-        this.gasUsed = 0n;
-
         // Deploy if not deployed.
         await this.deployContract();
 
         this.gasUsed = gasUsed || 0n;
         this.memoryPagesUsed = memoryPagesUsed;
-        this.loadContract();
 
-        if (sender || txOrigin) {
-            this.setEnvironment(sender, txOrigin);
-        } else {
-            this.setEnvironment();
-        }
+        this.loadContract();
+        this.setEnvironment(sender, txOrigin);
 
         const statesBackup = new FastBigIntMap(this.states);
-        this.loadedPointers = 0n;
-        this.storedPointers = 0n;
 
         let error: Error | undefined;
         const response = await this.contract.execute(calldata).catch(async (e: unknown) => {
@@ -352,27 +348,33 @@ export class ContractRuntime extends Logger {
             return undefined;
         });
 
-        if (error) {
-            // Restore states
+        this.dispose();
+
+        // Restore states
+        if (error || response?.status !== 0) {
             this.states = statesBackup;
         }
 
+        // Fatal error in rust
         if (response == null) {
             throw error;
         }
 
         this.gasUsed = response.gasUsed;
 
-        return {
-            status: response.status,
-            response: Uint8Array.from(response.data),
-            error,
+        if (CONSENSUS.TRANSACTIONS.MAXIMUM_RECEIPT_LENGTH < response.data.length) {
+            throw new Error(
+                `OPNET: MAXIMUM_RECEIPT_LENGTH EXCEEDED (${response.data.length} > ${CONSENSUS.TRANSACTIONS.MAXIMUM_RECEIPT_LENGTH})`,
+            );
+        }
+
+        return new CallResponse({
+            exitData: response,
             events: this.events,
             callStack: this.callStack,
             touchedAddresses: this.touchedAddresses,
             touchedBlocks: this.touchedBlocks,
-            usedGas: response.gasUsed,
-        };
+        });
     }
 
     protected handleError(error: Error): Error {
@@ -395,15 +397,7 @@ export class ContractRuntime extends Logger {
                 this.states = new FastBigIntMap(this.deploymentStates);
             }
 
-            try {
-                this.dispose();
-            } catch (e) {
-                const strErr = (e as Error).message;
-
-                if (strErr.includes('REENTRANCY')) {
-                    this.warn(strErr);
-                }
-            }
+            this.dispose();
 
             const params: ContractParameters = this.generateParams();
             this._contract = new RustContract(params);
@@ -424,18 +418,20 @@ export class ContractRuntime extends Logger {
 
     private async deployContractAtAddress(data: Buffer): Promise<Buffer | Uint8Array> {
         const reader = new BinaryReader(data);
-
         const address: Address = reader.readAddress();
         const salt: Buffer = Buffer.from(reader.readBytes(32));
-        const saltBig = BigInt(
-            '0x' + salt.reduce((acc, byte) => acc + byte.toString(16).padStart(2, '0'), ''),
-        );
 
         if (Blockchain.traceDeployments) {
+            const saltBig = BigInt(
+                '0x' + salt.reduce((acc, byte) => acc + byte.toString(16).padStart(2, '0'), ''),
+            );
+
             this.log(
                 `This contract wants to deploy the same bytecode as ${address}. Salt: ${salt.toString('hex')} or ${saltBig}`,
             );
         }
+
+        // TODO: Add deployment stack like in opnet-node
 
         const deployedContractAddress = Blockchain.generateAddress(this.address, salt, address);
         if (this.deployedContracts.has(deployedContractAddress)) {
@@ -479,7 +475,7 @@ export class ContractRuntime extends Logger {
         const reader = new BinaryReader(data);
         const pointer = reader.readU256();
         const value = this.states.get(pointer);
-        const isSlotWarm = value != null;
+        const isSlotWarm = value !== undefined;
 
         if (Blockchain.tracePointers) {
             this.log(`Attempting to load pointer ${pointer} - value ${value || 0n}`);
@@ -503,10 +499,17 @@ export class ContractRuntime extends Logger {
             this.log(`Attempting to store pointer ${pointer} - value ${value}`);
         }
 
+        // Charge gas here.
         const isSlotWarm = this.states.has(pointer);
 
-        this.states.set(pointer, value);
+        // Just do this in rust??
+        /*if (isSlotWarm) {
+            this.gasUsed += UPDATED_STORAGE_SLOT_GAS_COST;
+        } else {
+            this.gasUsed += NEW_STORAGE_SLOT_GAS_COST;
+        }*/
 
+        this.states.set(pointer, value);
         this.storedPointers++;
 
         const response: BinaryWriter = new BinaryWriter();
@@ -515,12 +518,12 @@ export class ContractRuntime extends Logger {
         return response.getBuffer();
     }
 
-    private checkReentrancy(calls: AddressStack): void {
-        if (DISABLE_REENTRANCY_GUARD) {
+    private checkReentrancy(): void {
+        if (!CONSENSUS.TRANSACTIONS.REENTRANCY_GUARD) {
             return;
         }
 
-        if (calls.includes(this.address)) {
+        if (this.callStack.includes(this.address)) {
             throw new Error('OPNET: REENTRANCY DETECTED');
         }
     }
@@ -530,87 +533,123 @@ export class ContractRuntime extends Logger {
             throw new Error('Contract not initialized');
         }
 
-        const reader = new BinaryReader(data);
-        const gasUsed: bigint = reader.readU64();
-        const memoryPagesUsed: bigint = BigInt(reader.readU32());
-        const contractAddress: Address = reader.readAddress();
-        const calldata: Uint8Array = reader.readBytesWithLength();
-
-        if (!contractAddress) {
-            throw new Error(`No contract address specified in call?`);
-        }
-
-        if (Blockchain.traceCalls) {
-            this.info(`Attempting to call contract ${contractAddress.p2tr(Blockchain.network)}`);
-        }
-
-        const contract: ContractRuntime = Blockchain.getContract(contractAddress);
-        const code = contract.bytecode;
-        const isAddressWarm = this.touchedAddresses.has(contractAddress);
-
-        this.callStack.push(contractAddress);
-        this.touchedAddresses.add(contractAddress);
-
-        if (this.callStack.length > MAX_CALL_STACK_DEPTH) {
-            this.error(`OPNET: MAXIMUM CALL STACK DEPTH EXCEEDED`);
-            const writer = new BinaryWriter();
-            writer.writeBoolean(isAddressWarm);
-            writer.writeU64(0n);
-            writer.writeU32(1);
-
-            return writer.getBuffer();
-        }
-
-        const ca = new ContractRuntime({
-            address: contractAddress,
-            deployer: contract.deployer,
-            bytecode: code,
-            gasLimit: contract.gasMax,
-            gasUsed: gasUsed,
-        });
-
-        ca.events = this.events;
-        ca.callStack = this.callStack;
-        ca.touchedAddresses = this.touchedAddresses;
-        ca.touchedBlocks = this.touchedBlocks;
-
-        ca.preserveState();
-        ca.setStates(contract.getStates());
-
-        await ca.init();
-
-        const callResponse: CallResponse = await ca.onCall(
-            calldata,
-            this.address,
-            Blockchain.txOrigin,
-            gasUsed,
-            memoryPagesUsed,
-        );
-
-        contract.setStates(ca.getStates());
-
         try {
-            ca.delete();
-        } catch {}
+            const reader = new BinaryReader(data);
+            const gasUsed: bigint = reader.readU64();
+            const memoryPagesUsed: bigint = BigInt(reader.readU32());
+            const contractAddress: Address = reader.readAddress();
+            const calldata: Uint8Array = reader.readBytesWithLength();
 
-        this.events = callResponse.events;
-        this.callStack = callResponse.callStack;
-        this.touchedAddresses = callResponse.touchedAddresses;
-        this.touchedBlocks = callResponse.touchedBlocks;
+            if (Blockchain.traceCalls) {
+                this.info(
+                    `Attempting to call contract ${contractAddress.p2tr(Blockchain.network)}`,
+                );
+            }
 
-        if (this.callStack.length > MAX_CALL_STACK_DEPTH) {
-            throw new Error(`OPNET: CALL_STACK DEPTH EXCEEDED`);
+            const contract: ContractRuntime = Blockchain.getContract(contractAddress);
+            const isAddressWarm = this.touchedAddresses.has(contractAddress);
+
+            this.callStack.push(contractAddress);
+            this.touchedAddresses.add(contractAddress);
+
+            if (this.verifyCallStackDepth()) {
+                throw new Error(`OPNET: CALL_STACK DEPTH EXCEEDED`);
+            }
+
+            const ca = new ContractRuntime({
+                address: contractAddress,
+                deployer: contract.deployer,
+                bytecode: contract.bytecode,
+                gasLimit: contract.gasMax,
+                gasUsed: gasUsed,
+                memoryPagesUsed: memoryPagesUsed,
+            });
+
+            ca.preserveState();
+            ca.setStates(contract.getStates());
+
+            await ca.init();
+
+            const states: StateOverride = {
+                events: this.events,
+                callStack: this.callStack,
+                touchedAddresses: this.touchedAddresses,
+                touchedBlocks: this.touchedBlocks,
+                totalEventLength: this.totalEventLength,
+                storedPointers: this.storedPointers,
+                loadedPointers: this.loadedPointers,
+            };
+
+            // Apply states override
+            ca.applyStatesOverride(states);
+
+            const callResponse: CallResponse = await ca.onCall(
+                calldata,
+                this.address,
+                Blockchain.txOrigin,
+                gasUsed,
+                memoryPagesUsed,
+            );
+
+            contract.setStates(ca.getStates());
+
+            try {
+                ca.delete();
+            } catch {}
+
+            this.mergeStates(ca);
+            this.checkReentrancy();
+
+            return this.buildCallResponse(
+                isAddressWarm,
+                callResponse.usedGas,
+                callResponse.status as 0 | 1,
+                callResponse.response,
+            );
+        } catch (e) {
+            return this.buildCallResponse(false, 0n, 1, this.getErrorAsBuffer(e as Error));
         }
+    }
 
-        this.checkReentrancy(callResponse.callStack);
+    private mergeStates(states: ContractRuntime): void {
+        this.events = states.events;
+        this.callStack = states.callStack;
 
+        this.touchedBlocks = states.touchedBlocks;
+        this.touchedBlocks = states.touchedBlocks;
+        this.totalEventLength = states.totalEventLength;
+
+        this.loadedPointers = states.loadedPointers;
+        this.storedPointers = states.storedPointers;
+    }
+
+    private buildCallResponse(
+        isAddressWarm: boolean,
+        usedGas: bigint,
+        status: 0 | 1,
+        response: Uint8Array,
+    ): Uint8Array {
         const writer = new BinaryWriter();
         writer.writeBoolean(isAddressWarm);
-        writer.writeU64(callResponse.usedGas);
-        writer.writeU32(callResponse.status);
-        writer.writeBytes(callResponse.response);
+        writer.writeU64(usedGas);
+        writer.writeU32(status);
+        writer.writeBytes(response);
 
         return writer.getBuffer();
+    }
+
+    private verifyCallStackDepth(): boolean {
+        return this.callStack.length > CONSENSUS.TRANSACTIONS.MAXIMUM_CALL_DEPTH;
+    }
+
+    private getErrorAsBuffer(error: Error | string | undefined): Uint8Array {
+        const errorWriter = new BinaryWriter();
+        errorWriter.writeSelector(0x63739d5c);
+        errorWriter.writeStringWithLength(
+            typeof error === 'string' ? error : error?.message || 'Unknown error',
+        );
+
+        return errorWriter.getBuffer();
     }
 
     private onLog(data: Buffer | Uint8Array): void {
@@ -635,9 +674,24 @@ export class ContractRuntime extends Logger {
 
     private onEvent(data: Buffer): void {
         const reader = new BinaryReader(data);
-        const eventName = reader.readStringWithLength();
-        const eventData = reader.readBytesWithLength();
+        const eventNameLength = reader.readU16();
+        if (CONSENSUS.TRANSACTIONS.EVENTS.MAXIMUM_EVENT_NAME_LENGTH < eventNameLength) {
+            throw new Error('OPNET: MAXIMUM_EVENT_NAME_LENGTH EXCEEDED');
+        }
 
+        const eventName = reader.readString(eventNameLength);
+        const eventByteLength = reader.readU32();
+        if (CONSENSUS.TRANSACTIONS.EVENTS.MAXIMUM_EVENT_LENGTH < eventByteLength) {
+            throw new Error('OPNET: MAXIMUM_EVENT_LENGTH EXCEEDED');
+        }
+
+        this.totalEventLength += eventByteLength;
+
+        if (CONSENSUS.TRANSACTIONS.EVENTS.MAXIMUM_TOTAL_EVENT_LENGTH < this.totalEventLength) {
+            throw new Error('OPNET: MAXIMUM_TOTAL_EVENT_LENGTH EXCEEDED');
+        }
+
+        const eventData = reader.readBytes(eventByteLength);
         const event = new NetEvent(eventName, eventData);
         this.events.push(event);
     }
@@ -648,6 +702,10 @@ export class ContractRuntime extends Logger {
         if (!tx) {
             return Promise.resolve(Buffer.alloc(1));
         } else {
+            if (CONSENSUS.TRANSACTIONS.MAXIMUM_INPUTS > tx.inputs.length) {
+                throw new Error('OPNET: MAXIMUM_INPUTS EXCEEDED');
+            }
+
             return Promise.resolve(Buffer.from(tx.serializeInputs()));
         }
     }
@@ -658,6 +716,10 @@ export class ContractRuntime extends Logger {
         if (!tx) {
             return Promise.resolve(Buffer.alloc(1));
         } else {
+            if (CONSENSUS.TRANSACTIONS.MAXIMUM_OUTPUTS > tx.outputs.length) {
+                throw new Error('OPNET: MAXIMUM_OUTPUTS EXCEEDED');
+            }
+
             return Promise.resolve(Buffer.from(tx.serializeOutputs()));
         }
     }
