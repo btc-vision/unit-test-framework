@@ -6,10 +6,11 @@
   "main": "build/index.js",
   "scripts": {
     "build": "gulp",
-    "build:test-contract": "node scripts/buildTestContract.js",
+    "build:test-contracts": "node scripts/buildTestContracts.js",
     "prepublish": "build",
-    "test": "npm-run-all build:test-contract test:*",
+    "test": "npm-run-all build:test-contracts test:*",
     "test:call-depth": "tsx test/e2e/limits/CallDepth.test.ts",
+    "test:gas": "tsx test/e2e/gas/Gas.test.ts",
     "test:memory": "tsx test/e2e/limits/Memory.test.ts",
     "test:sha256": "tsx test/e2e/imports/Sha256.test.ts",
     "test:storage": "tsx test/e2e/imports/Storage.test.ts"

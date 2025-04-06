@@ -1,6 +1,6 @@
 import { Address } from '@btc-vision/transaction';
 import { Assert, Blockchain, opnet, OPNetUnit } from '../../../src';
-import { TestContractRuntime } from '../test-contract/runtime/TestContractRuntime';
+import { TestContractRuntime } from '../contracts/test-contract/runtime/TestContractRuntime';
 
 const A_STORAGE_KEY: Uint8Array = bigIntToUint8Array(109742986593450428n);
 const A_STORAGE_VALUE: Uint8Array = bigIntToUint8Array(3n);

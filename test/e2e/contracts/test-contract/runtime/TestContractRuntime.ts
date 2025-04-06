@@ -1,5 +1,5 @@
 import { Address, BinaryReader, BinaryWriter } from '@btc-vision/transaction';
-import { BytecodeManager, CallResponse, ContractRuntime } from '../../../../src';
+import { BytecodeManager, CallResponse, ContractRuntime } from '../../../../../src';
 
 export class TestContractRuntime extends ContractRuntime {
     private readonly sha256Selector: number = this.getSelector('sha256(bytes)');
@@ -165,7 +165,7 @@ export class TestContractRuntime extends ContractRuntime {
 
     protected defineRequiredBytecodes(): void {
         BytecodeManager.loadBytecode(
-            './test/e2e/test-contract/contract/build/TestContract.wasm',
+            './test/e2e/contracts/test-contract/contract/build/TestContract.wasm',
             this.address,
         );
     }
