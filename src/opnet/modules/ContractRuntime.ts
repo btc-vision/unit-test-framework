@@ -210,7 +210,7 @@ export class ContractRuntime extends Logger {
 
         if (Blockchain.traceCalls) {
             this.log(
-                `Called externally by an other contract. Selector: ${selector.toString(16)}`, //- Calldata: ${calldata.toString('hex')}
+                `Called externally by another contract. Selector: ${selector.toString(16)}`, //- Calldata: ${calldata.toString('hex')}
             );
         }
 
