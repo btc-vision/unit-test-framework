@@ -18,6 +18,10 @@ export class TestContractRuntime extends ContractRuntime {
     private readonly modifyStateThenRevertSelector: number = this.getSelector(
         'modifyStateThenRevert(bytes32,bytes32)',
     );
+    private readonly callThenModifyStateSelector: number = this.getSelector(
+        'callThenModifyState(bytes32,bytes32)',
+    );
+    private readonly modifyStateSelector: number = this.getSelector('modifyState(bytes32,bytes32)');
 
     public constructor(deployer: Address, address: Address, gasLimit: bigint = 350_000_000_000n) {
         super({
@@ -108,6 +112,35 @@ export class TestContractRuntime extends ContractRuntime {
     ): Promise<void> {
         const calldata = new BinaryWriter();
         calldata.writeSelector(this.modifyStateThenRevertSelector);
+        calldata.writeBytes(storageKey);
+        calldata.writeBytes(storageValue);
+
+        const response = await this.execute(calldata.getBuffer());
+        this.handleResponse(response);
+    }
+
+    public async callThenModifyState(
+        storageKey: Uint8Array,
+        storageValue: Uint8Array,
+    ): Promise<Uint8Array> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.callThenModifyStateSelector);
+        calldata.writeBytes(storageKey);
+        calldata.writeBytes(storageValue);
+
+        const response = await this.execute(calldata.getBuffer());
+        this.handleResponse(response);
+
+        const reader = new BinaryReader(response.response);
+        return reader.readBytes(32);
+    }
+
+    public async modifyState(
+        storageKey: Uint8Array,
+        storageValue: Uint8Array,
+    ): Promise<void> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.modifyStateSelector);
         calldata.writeBytes(storageKey);
         calldata.writeBytes(storageValue);
 

@@ -148,4 +148,33 @@ export class TestContract extends OP_NET {
 
         throw new Error('die');
     }
+
+    @method('bytes32', 'bytes32')
+    public callThenModifyState(calldata: Calldata): BytesWriter {
+        const storageKey = calldata.readBytes(32);
+        const storageValue = calldata.readBytes(32);
+
+        const subCallCalldata = new BytesWriter(4 + 32 + 32);
+        subCallCalldata.writeSelector(encodeSelector('modifyState(bytes32,bytes32)'));
+        subCallCalldata.writeBytes(storageKey);
+        subCallCalldata.writeBytes(storageValue);
+
+        this.callDontRevertOnFailure(this.address, subCallCalldata);
+
+        const finalStorageValue = Blockchain.getStorageAt(storageKey);
+
+        const result = new BytesWriter(32);
+        result.writeBytes(finalStorageValue);
+        return result;
+    }
+
+    @method('bytes32', 'bytes32')
+    public modifyState(calldata: Calldata): BytesWriter {
+        const storageKey = calldata.readBytes(32);
+        const storageValue = calldata.readBytes(32);
+
+        Blockchain.setStorageAt(storageKey, storageValue);
+
+        return new BytesWriter(0);
+    }
 }

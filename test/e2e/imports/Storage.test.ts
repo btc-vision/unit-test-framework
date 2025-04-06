@@ -2,6 +2,10 @@ import { Address } from '@btc-vision/transaction';
 import { Assert, Blockchain, opnet, OPNetUnit } from '../../../src';
 import { TestContractRuntime } from '../test-contract/runtime/TestContractRuntime';
 
+const A_STORAGE_KEY: Uint8Array = bigIntToUint8Array(109742986593450428n);
+const A_STORAGE_VALUE: Uint8Array = bigIntToUint8Array(3n);
+const ANOTHER_STORAGE_VALUE: Uint8Array = bigIntToUint8Array(5n);
+
 await opnet('Storage tests', async (vm: OPNetUnit) => {
     let contract: TestContractRuntime;
 
@@ -27,17 +31,23 @@ await opnet('Storage tests', async (vm: OPNetUnit) => {
     });
 
     await vm.it('should revert only state modifications done in a single call frame that reverts', async () => {
-            let storageKey = bigIntToUint8Array(109742986593450428n);
-            let firstStorageValue = bigIntToUint8Array(3n);
-            let secondStorageValue = bigIntToUint8Array(5n);
-
             let result = await contract.modifyStateThenCallFunctionModifyingStateThatReverts(
-                storageKey,
-                firstStorageValue,
-                secondStorageValue,
+                A_STORAGE_KEY,
+                A_STORAGE_VALUE,
+                ANOTHER_STORAGE_VALUE,
             );
 
-            Assert.expect(areBytesEqual(result, firstStorageValue)).toEqual(true);
+            Assert.expect(areBytesEqual(result, A_STORAGE_VALUE)).toEqual(true);
+        },
+    );
+
+    await vm.it('should persist state modifications done in a call to the parent context', async () => {
+            let result = await contract.callThenModifyState(
+                A_STORAGE_KEY,
+                A_STORAGE_VALUE,
+            );
+
+            Assert.expect(areBytesEqual(result, A_STORAGE_VALUE)).toEqual(true);
         },
     );
 });
