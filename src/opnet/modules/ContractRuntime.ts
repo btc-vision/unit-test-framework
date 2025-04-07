@@ -256,7 +256,7 @@ export class ContractRuntime extends Logger {
 
             clearTimeout(this.disposeTimeout);
 
-            this.disposeTimeout = null;
+            this.disposeTimeout = undefined;
         }
     }
 
