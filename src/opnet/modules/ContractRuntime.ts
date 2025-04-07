@@ -553,7 +553,7 @@ export class ContractRuntime extends Logger {
         this.touchedAddresses.add(contractAddress);
 
         if (this.callStack.length > MAX_CALL_STACK_DEPTH) {
-            this.error(`OPNET: MAXIMUM CALL STACK DEPTH EXCEEDED`);
+            this.error(`OPNET: MAXIMUM CALL DEPTH EXCEEDED`);
             const writer = new BinaryWriter();
             writer.writeBoolean(isAddressWarm);
             writer.writeU64(0n);
