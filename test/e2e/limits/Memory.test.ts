@@ -52,10 +52,9 @@ await opnet('Memory tests', async (vm: OPNetUnit) => {
         Assert.expect(result).toEqual(false);
     });
 
-    // TODO: Hangs after completion
-    // await vm.it('should fail to make a call after growing the memory to the maximum size', async () => {
-    //     await Assert.expect(async () => {
-    //         await contract.growMemoryThenRecursiveCall(511, 1);
-    //     }).toThrow("No more memory pages available")
-    // });
+    await vm.it('should fail to make a call after growing the memory to the maximum size', async () => {
+        await Assert.expect(async () => {
+            await contract.growMemoryThenRecursiveCall(511, 1);
+        }).toThrow("No more memory pages available")
+    });
 });
