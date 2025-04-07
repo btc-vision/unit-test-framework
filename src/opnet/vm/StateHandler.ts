@@ -5,9 +5,10 @@ class InternalStateHandler {
     protected states: AddressMap<FastBigIntMap> = new AddressMap();
     protected instancesTemporaryStates: AddressMap<FastBigIntMap> = new AddressMap();
     protected deployed: AddressMap<boolean> = new AddressMap();
+    protected pendingDeployments: AddressMap<boolean> = new AddressMap();
 
     public isDeployed(contract: Address): boolean {
-        const state = this.deployed.get(contract);
+        const state = this.deployed.get(contract) || this.pendingDeployments.get(contract);
         if (state) {
             return state;
         }
@@ -24,17 +25,35 @@ class InternalStateHandler {
         }
     }
 
+    public resetPendingDeployments(): void {
+        this.pendingDeployments.clear();
+    }
+
+    public setPendingDeployments(contract: Address): void {
+        if (this.pendingDeployments.has(contract)) {
+            throw new Error(`Contract ${contract.toString()} is already pending deployment.`);
+        }
+
+        this.pendingDeployments.set(contract, true);
+    }
+
+    public markAllPendingDeploymentsAsDone(): void {
+        for (const contract of this.pendingDeployments.keys()) {
+            this.deployed.set(contract, true);
+
+            this.pendingDeployments.delete(contract);
+        }
+    }
+
     public pushAllTempStatesToGlobal(): void {
+        StateHandler.markAllPendingDeploymentsAsDone();
+
         for (const [contract, tempState] of this.instancesTemporaryStates.entries()) {
             if (!tempState.size) {
-                console.log(`Skipped because states were purged.`);
-
                 continue;
             }
 
             const globalState = this.states.get(contract);
-            console.log(`Pushing temp states to global for contract:`, contract);
-
             if (globalState) {
                 globalState.addAll(tempState);
             } else {
@@ -53,7 +72,11 @@ class InternalStateHandler {
             return state;
         }
 
-        return new FastBigIntMap();
+        // If no temporary state exists, create a new one
+        const newState = new FastBigIntMap();
+        this.instancesTemporaryStates.set(contract, newState);
+
+        return newState;
     }
 
     public setTemporaryStates(contract: Address, states: FastBigIntMap): void {
@@ -66,16 +89,12 @@ class InternalStateHandler {
     }
 
     public clearTemporaryStates(contract: Address): void {
-        console.log(`Clearing temp states for contract: ${contract.toString()}`);
-
         const state = this.instancesTemporaryStates.get(contract);
         if (state) {
             state.clear();
         }
 
         this.instancesTemporaryStates.delete(contract);
-
-        console.log('instancesTemporaryStates', this.instancesTemporaryStates);
     }
 
     public globalLoad(contract: Address, pointer: bigint): bigint | undefined {
@@ -105,9 +124,10 @@ class InternalStateHandler {
     }
 
     public purgeAll(): void {
-        for (const state of this.states.values()) {
-            state.clear();
-        }
+        this.states.clear();
+        this.instancesTemporaryStates.clear();
+        this.deployed.clear();
+        this.pendingDeployments.clear();
     }
 }
 

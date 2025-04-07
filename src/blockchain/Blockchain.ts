@@ -146,6 +146,7 @@ class BlockchainBase extends Logger {
     }
 
     public clearContracts(): void {
+        StateHandler.purgeAll();
         this.contracts.clear();
     }
 

@@ -135,16 +135,6 @@ export class ContractRuntime extends Logger {
         this.storedPointers = override.storedPointers;
     }
 
-    // Internal state management
-    /*public getStates(): FastBigIntMap {
-        return StateHandler.getTemporaryStates(this.address);
-    }
-
-    // Internal state management
-    public setStates(states: FastBigIntMap): void {
-        StateHandler.setTemporaryStates(this.address, states);
-    }*/
-
     public delete(): void {
         this.dispose();
 
@@ -231,7 +221,7 @@ export class ContractRuntime extends Logger {
             return new CallResponse({
                 exitData: {
                     status: 1,
-                    gasUsed: this.gasMax - 1n, // if we don't do gasMax here and the execution actually used some gas, the user is getting free gas on partial reverts, otherwise rust need to return the real used gas.
+                    gasUsed: this.getGasUsed(), // if we don't do gasMax here and the execution actually used some gas, the user is getting free gas on partial reverts, otherwise rust need to return the real used gas.
                     data: Buffer.from(newResponse.message),
                 },
                 events: this.events,
@@ -256,7 +246,7 @@ export class ContractRuntime extends Logger {
         return Promise.resolve();
     }
 
-    public async deployContract(): Promise<void> {
+    public async deployContract(pushStates: boolean = true): Promise<void> {
         if (StateHandler.isDeployed(this.address)) {
             return;
         }
@@ -272,27 +262,34 @@ export class ContractRuntime extends Logger {
                 error = e as Error;
             });
 
+            if (error) {
+                this.warn(`Fatal error: ${error}`);
+                throw error;
+            }
+
             if (response?.status !== 0) {
                 throw new Error(`OPNET: Unable to deploy contract`);
             }
 
-            // Fatal error in rust or js
-            if (response == null) {
-                throw error;
-            }
+            StateHandler.setPendingDeployments(this.address);
 
             // Mark as deployed
-            StateHandler.setDeployed(this.address, true);
-            StateHandler.pushAllTempStatesToGlobal();
+            if (pushStates) {
+                StateHandler.pushAllTempStatesToGlobal();
+            }
         } finally {
             this.dispose();
-            this.resetInternalStates();
+
+            if (pushStates) {
+                this.resetInternalStates();
+            }
         }
     }
 
     protected resetInternalStates(): void {
         this.gasUsed = 0n;
 
+        StateHandler.resetPendingDeployments();
         StateHandler.clearTemporaryStates(this.address);
 
         this.loadedPointers = 0n;
@@ -308,15 +305,19 @@ export class ContractRuntime extends Logger {
     }
 
     protected async execute(executionParameters: ExecutionParameters): Promise<CallResponse> {
+        // Always make sure we don't have dirty states
         this.resetInternalStates();
 
         const response = await this.executeCall(executionParameters);
         if (response.status === 0 && !response.error) {
-            StateHandler.pushAllTempStatesToGlobal();
+            // Only save states if the execution was successful and the user allow it
+            if (executionParameters.saveStates !== false) {
+                StateHandler.pushAllTempStatesToGlobal();
+            }
         }
 
-        console.log('purging after execute');
-        StateHandler.clearTemporaryStates(this.address);
+        // Reset internal states
+        this.resetInternalStates();
 
         return response;
     }
@@ -348,14 +349,21 @@ export class ContractRuntime extends Logger {
         // Restore states
         if (error || response?.status !== 0) {
             this.restoreStates();
+
+            this.gasUsed = response?.gasUsed || this.getGasUsed();
+        } else {
+            const gasUsed = this.getGasUsed();
+            if (response.gasUsed !== gasUsed) {
+                throw new Error(`OPNET: gas used mismatch ${response.gasUsed} != ${gasUsed}`);
+            }
+
+            this.gasUsed = this.calculateGasCostSave(response.gasUsed);
         }
 
         // Fatal error in rust
         if (response == null) {
             throw error;
         }
-
-        this.gasUsed = this.calculateGasCostSave(response.gasUsed);
 
         if (CONSENSUS.TRANSACTIONS.MAXIMUM_RECEIPT_LENGTH < response.data.length) {
             throw new Error(
@@ -426,6 +434,18 @@ export class ContractRuntime extends Logger {
         }
     }
 
+    private getGasUsed(): bigint {
+        try {
+            if (this._contract) {
+                return this._contract.getUsedGas();
+            } else {
+                return this.gasMax;
+            }
+        } catch {
+            return this.gasMax;
+        }
+    }
+
     private async deployContractAtAddress(data: Buffer): Promise<Buffer | Uint8Array> {
         const reader = new BinaryReader(data);
         const address: Address = reader.readAddress();
@@ -469,6 +489,8 @@ export class ContractRuntime extends Logger {
         if (Blockchain.traceDeployments) {
             this.log(`Deployed contract at ${deployedContractAddress.p2tr(Blockchain.network)}`);
         }
+
+        await newContract.deployContract(false);
 
         this.deployedContracts.set(deployedContractAddress, this.bytecode);
 
