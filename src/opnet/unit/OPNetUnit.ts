@@ -35,6 +35,8 @@ export class OPNetUnit extends Logger {
         }
 
         Blockchain.cleanup();
+
+        console.log('Done executing tests.');
     }
 
     // Define the 'it' function to run individual tests

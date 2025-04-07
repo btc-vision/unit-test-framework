@@ -6,7 +6,7 @@
     "main": "build/index.js",
     "scripts": {
         "build": "gulp",
-        "build:test-contract": "node scripts/buildTestContract.js",
+        "build:test-contract": "node scripts/buildTestContracts.js",
         "prepublish": "build",
         "test": "npm-run-all build:test-contract test:*",
         "test:memory": "tsx test/e2e/limits/Memory.test.ts",

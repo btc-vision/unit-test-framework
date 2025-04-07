@@ -1,8 +1,6 @@
 import { Address } from '@btc-vision/transaction';
-import { Blockchain } from '../src';
-import { OP_20 } from '../src/contracts/OP_20.js';
-import { Assert } from '../src';
-import { opnet, OPNetUnit } from '../src';
+import { Assert, Blockchain, opnet, OPNetUnit } from '../src';
+import { OP_20 } from '../src/index.js';
 
 const rndAddress = Blockchain.generateRandomAddress();
 const receiver: Address = Blockchain.generateRandomAddress();
@@ -14,7 +12,7 @@ await opnet('Compare OP_20 gas usage', async (vm: OPNetUnit) => {
     await vm.it('should instantiate an OP_20 token', async () => {
         await Assert.expect(async () => {
             const token = new OP_20({
-                fileName: 'MyToken',
+                file: 'MyToken',
                 deployer: Blockchain.txOrigin,
                 address: rndAddress,
                 decimals: 18,
@@ -29,7 +27,7 @@ await opnet('Compare OP_20 gas usage', async (vm: OPNetUnit) => {
 
     // Declare all the request contracts
     const token = new OP_20({
-        fileName: 'MyToken',
+        file: 'MyToken',
         deployer: Blockchain.txOrigin,
         address: rndAddress,
         decimals: 18,

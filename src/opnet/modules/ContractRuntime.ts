@@ -721,7 +721,7 @@ export class ContractRuntime extends Logger {
         if (!tx) {
             return Promise.resolve(Buffer.alloc(1));
         } else {
-            if (CONSENSUS.TRANSACTIONS.MAXIMUM_INPUTS > tx.inputs.length) {
+            if (CONSENSUS.TRANSACTIONS.MAXIMUM_INPUTS < tx.inputs.length) {
                 throw new Error('OPNET: MAXIMUM_INPUTS EXCEEDED');
             }
 
@@ -735,8 +735,10 @@ export class ContractRuntime extends Logger {
         if (!tx) {
             return Promise.resolve(Buffer.alloc(1));
         } else {
-            if (CONSENSUS.TRANSACTIONS.MAXIMUM_OUTPUTS > tx.outputs.length) {
-                throw new Error('OPNET: MAXIMUM_OUTPUTS EXCEEDED');
+            if (CONSENSUS.TRANSACTIONS.MAXIMUM_OUTPUTS < tx.outputs.length) {
+                throw new Error(
+                    `OPNET: MAXIMUM_OUTPUTS EXCEEDED ${CONSENSUS.TRANSACTIONS.MAXIMUM_OUTPUTS} < ${tx.outputs.length}`,
+                );
             }
 
             return Promise.resolve(Buffer.from(tx.serializeOutputs()));
