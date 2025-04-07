@@ -1,6 +1,6 @@
 import { Address } from '@btc-vision/transaction';
 import { Assert, Blockchain, opnet, OPNetUnit } from '../../../src';
-import { TestContractRuntime } from '../test-contract/runtime/TestContractRuntime';
+import { TestContractRuntime } from '../contracts/test-contract/runtime/TestContractRuntime';
 
 await opnet('Memory tests', async (vm: OPNetUnit) => {
     let contract: TestContractRuntime;

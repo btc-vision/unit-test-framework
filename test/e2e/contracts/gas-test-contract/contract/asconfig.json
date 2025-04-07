@@ -1,0 +1,13 @@
+{
+    "targets": {
+        "debug": {
+            "outFile": "build/GasTestContract.wasm",
+            "textFile": "build/GasTestContract.wat"
+        }
+    },
+    "options": {
+        "optimizeLevel": 3,
+        "runtime": "stub",
+        "exportStart": "start"
+    }
+}

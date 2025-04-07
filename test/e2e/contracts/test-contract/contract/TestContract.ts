@@ -1,0 +1,180 @@
+import {
+    Address,
+    Blockchain,
+    BytesReader,
+    BytesWriter,
+    Calldata,
+    encodeSelector,
+    OP_NET,
+} from '@btc-vision/btc-runtime/runtime';
+import { callContract, getCallResult, sha256 } from '@btc-vision/btc-runtime/runtime/env/global';
+
+@final
+export class TestContract extends OP_NET {
+    public constructor() {
+        super();
+    }
+
+    @method('bytes')
+    @returns('bytes32')
+    public sha256(calldata: Calldata): BytesWriter {
+        const data = calldata.readBytesWithLength();
+
+        const result = sha256(data);
+
+        const writer = new BytesWriter(32);
+        writer.writeBytes(result);
+        return writer;
+    }
+
+    @method('uint32')
+    @returns('bool')
+    public callThenGrowMemory(calldata: Calldata): BytesWriter {
+        const pages = calldata.readU32();
+
+        const growMemoryCalldata = new BytesWriter(8);
+        growMemoryCalldata.writeSelector(encodeSelector('growMemory(uint32)'));
+        growMemoryCalldata.writeU32(pages);
+
+        const response = Blockchain.call(this.address, growMemoryCalldata);
+        const success = response.readBoolean();
+
+        const result = new BytesWriter(1);
+        result.writeBoolean(success);
+
+        return result;
+    }
+
+    @method('uint32', 'uint32')
+    public growMemoryThenRecursiveCall(calldata: Calldata): BytesWriter {
+        const pages = calldata.readU32();
+        const numberOfCalls = calldata.readU32();
+
+        this._growMemory(pages);
+
+        const recursiveCallCalldata = new BytesWriter(8);
+        recursiveCallCalldata.writeSelector(encodeSelector('recursiveCall(uint32)'));
+        recursiveCallCalldata.writeU32(numberOfCalls - 1);
+        Blockchain.call(this.address, recursiveCallCalldata);
+
+        return new BytesWriter(0);
+    }
+
+    @method('uint32')
+    @returns('bool')
+    public growMemory(calldata: Calldata): BytesWriter {
+        const pages = calldata.readU32();
+
+        const success = this._growMemory(pages);
+
+        const result = new BytesWriter(1);
+        result.writeBoolean(success);
+        return result;
+    }
+
+    public _growMemory(pages: u32): boolean {
+        const previousMemorySize = memory.grow(pages);
+
+        return previousMemorySize != -1;
+    }
+
+    @method('uint32')
+    public recursiveCall(calldata: Calldata): BytesWriter {
+        const numberOfCalls = calldata.readU32();
+
+        if (numberOfCalls == 0) {
+            // throw new Error("die");
+            return new BytesWriter(0);
+        }
+
+        const recursiveCallCalldata = new BytesWriter(8);
+        recursiveCallCalldata.writeSelector(encodeSelector('recursiveCall(uint32)'));
+        recursiveCallCalldata.writeU32(numberOfCalls - 1);
+
+        Blockchain.call(this.address, recursiveCallCalldata);
+
+        return new BytesWriter(0);
+    }
+
+    @method('bytes32', 'bytes32', 'bytes32')
+    @returns('bytes32')
+    public modifyStateThenCallFunctionModifyingStateThatReverts(calldata: Calldata): BytesWriter {
+        const storageKey = calldata.readBytes(32);
+        const firstStorageValue = calldata.readBytes(32);
+        const secondStorageValue = calldata.readBytes(32);
+
+        Blockchain.setStorageAt(storageKey, firstStorageValue);
+
+        const subCallCalldata = new BytesWriter(4 + 32 + 32);
+        subCallCalldata.writeSelector(encodeSelector('modifyStateThenRevert(bytes32,bytes32)'));
+        subCallCalldata.writeBytes(storageKey);
+        subCallCalldata.writeBytes(secondStorageValue);
+
+        this.callDontRevertOnFailure(this.address, subCallCalldata);
+
+        const finalStorageValue = Blockchain.getStorageAt(storageKey);
+
+        const result = new BytesWriter(32);
+        result.writeBytes(finalStorageValue);
+        return result;
+    }
+
+    private callDontRevertOnFailure(
+        destinationContract: Address,
+        calldata: BytesWriter,
+    ): BytesReader {
+        const resultLengthBuffer = new ArrayBuffer(32);
+        callContract(
+            destinationContract.buffer,
+            calldata.getBuffer().buffer,
+            calldata.bufferLength(),
+            resultLengthBuffer,
+        );
+
+        const reader = new BytesReader(Uint8Array.wrap(resultLengthBuffer));
+        const resultLength = reader.readU32(true);
+        const resultBuffer = new ArrayBuffer(resultLength);
+        getCallResult(0, resultLength, resultBuffer);
+
+        return new BytesReader(Uint8Array.wrap(resultBuffer));
+    }
+
+    @method('bytes32', 'bytes32')
+    public modifyStateThenRevert(calldata: Calldata): BytesWriter {
+        const storageKey = calldata.readBytes(32);
+        const storageValue = calldata.readBytes(32);
+
+        Blockchain.setStorageAt(storageKey, storageValue);
+
+        throw new Error('die');
+    }
+
+    @method('bytes32', 'bytes32')
+    public callThenModifyState(calldata: Calldata): BytesWriter {
+        const storageKey = calldata.readBytes(32);
+        const storageValue = calldata.readBytes(32);
+
+        const subCallCalldata = new BytesWriter(4 + 32 + 32);
+        subCallCalldata.writeSelector(encodeSelector('modifyState(bytes32,bytes32)'));
+        subCallCalldata.writeBytes(storageKey);
+        subCallCalldata.writeBytes(storageValue);
+
+        this.callDontRevertOnFailure(this.address, subCallCalldata);
+
+        const finalStorageValue = Blockchain.getStorageAt(storageKey);
+
+        const result = new BytesWriter(32);
+        result.writeBytes(finalStorageValue);
+        return result;
+    }
+
+    @method('bytes32', 'bytes32')
+    public modifyState(calldata: Calldata): BytesWriter {
+        const storageKey = calldata.readBytes(32);
+        const storageValue = calldata.readBytes(32);
+
+        Blockchain.setStorageAt(storageKey, storageValue);
+
+        return new BytesWriter(0);
+    }
+}
