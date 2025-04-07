@@ -12,8 +12,10 @@ export class GasTestContractRuntime extends ContractRuntime {
         this.preserveState();
     }
 
-    public async main(): Promise<CallResponse> {
-        const calldata = new BinaryWriter();
+    public async main(selector: number): Promise<CallResponse> {
+        // The number passed usually represents the calldata length
+        // We use this number as a selector because we don't need to have calldata
+        const calldata = new BinaryWriter(selector);
 
         const response = await this.execute(calldata.getBuffer());
         this.handleResponse(response);

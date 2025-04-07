@@ -26,9 +26,15 @@ await opnet('Gas tests', async (vm: OPNetUnit) => {
         Blockchain.dispose();
     });
 
-    await vm.it('should charge the right gas to store value in new storage slot', async () => {
-        const response = await contract.main();
+    await vm.it('should charge the right gas for basic execution', async () => {
+        const response = await contract.main(0);
 
-        Assert.expect(response.usedGas).toEqual(241013471n);
+        Assert.expect(response.usedGas).toEqual(20001004n);
+    });
+
+    await vm.it('should charge the right gas to store value in new storage slot', async () => {
+        const response = await contract.main(2);
+
+        Assert.expect(response.usedGas).toEqual(241016473n);
     });
 });
