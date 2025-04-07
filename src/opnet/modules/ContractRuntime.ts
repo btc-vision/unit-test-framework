@@ -599,10 +599,6 @@ export class ContractRuntime extends Logger {
         this.touchedAddresses = callResponse.touchedAddresses;
         this.touchedBlocks = callResponse.touchedBlocks;
 
-        if (this.callStack.length > MAX_CALL_STACK_DEPTH) {
-            throw new Error(`OPNET: CALL_STACK DEPTH EXCEEDED`);
-        }
-
         this.checkReentrancy(callResponse.callStack);
 
         const writer = new BinaryWriter();
