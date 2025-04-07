@@ -1,6 +1,11 @@
 import { Address, AddressMap, EcKeyPair, TapscriptVerificator } from '@btc-vision/transaction';
 import { Logger } from '@btc-vision/logger';
-import { AccountTypeResponse, BlockHashRequest, ContractManager, ThreadSafeJsImportResponse } from '@btc-vision/op-vm';
+import {
+    AccountTypeResponse,
+    BlockHashRequest,
+    ContractManager,
+    ThreadSafeJsImportResponse,
+} from '@btc-vision/op-vm';
 import bitcoin, { Network } from '@btc-vision/bitcoin';
 import crypto from 'crypto';
 import {
@@ -112,7 +117,7 @@ class BlockchainBase extends Logger {
             this.inputsJSFunction,
             this.outputsJSFunction,
             this.accountTypeJSFunction,
-            this.blockHashJSFunction
+            this.blockHashJSFunction,
         );
     }
 

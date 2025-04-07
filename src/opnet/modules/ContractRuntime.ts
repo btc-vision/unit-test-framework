@@ -57,8 +57,6 @@ export class ContractRuntime extends Logger {
     private statesBackup: FastBigIntMap = new FastBigIntMap();
     private totalEventLength: number = 0;
 
-    private disposeTimeout: NodeJS.Timeout | undefined;
-
     // global states
     private readonly potentialBytecode?: Buffer;
     private readonly deploymentCalldata?: Buffer;
@@ -253,10 +251,6 @@ export class ContractRuntime extends Logger {
     public dispose(): void {
         if (this._contract) {
             this._contract.dispose();
-
-            clearTimeout(this.disposeTimeout);
-
-            this.disposeTimeout = undefined;
         }
     }
 
@@ -403,21 +397,8 @@ export class ContractRuntime extends Logger {
             if (!this.shouldPreserveState) {
                 this.states = new FastBigIntMap(this.deploymentStates);
             }
-
-            if (this.disposeTimeout) {
-                throw new Error('OPNET: Impossible state: Contract was never disposed.');
-            }
-
-            const params: ContractParameters = this.generateParams();
-
-            this._contract = new RustContract(params);
-            const id = this._contract.id;
-
-            this.disposeTimeout = setTimeout(() => {
-                this.warn(
-                    `Contract #${id} (${this.address}) was never disposed. (memory leak detected)`,
-                );
-            }, 15_000);
+            
+            this._contract = new RustContract(this.generateParams());
         } catch (e) {
             if (this._contract) {
                 try {
