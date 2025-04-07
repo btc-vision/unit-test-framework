@@ -15,7 +15,10 @@ export class GasTestContractRuntime extends ContractRuntime {
         // We use this number as a selector because we don't need to have calldata
         const calldata = new BinaryWriter(selector);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
+
         this.handleResponse(response);
 
         return response;

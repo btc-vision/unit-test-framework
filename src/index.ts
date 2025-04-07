@@ -12,6 +12,7 @@ export * from './contracts/OP_20.js';
 /** Interfaces */
 export * from './opnet/interfaces/CallResponse.js';
 export * from './opnet/interfaces/ContractDetails.js';
+export * from './opnet/interfaces/ExecuteParameters.js';
 
 /** Asserts */
 export * from './opnet/unit/Assertion.js';

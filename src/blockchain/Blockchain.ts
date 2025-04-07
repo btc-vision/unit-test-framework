@@ -174,13 +174,13 @@ class BlockchainBase extends Logger {
         return this.contracts.has(address);
     }
 
-    public backup(): void {
+    public backupStates(): void {
         for (const contract of this.contracts.values()) {
             contract.backupStates();
         }
     }
 
-    public restore(): void {
+    public restoreStates(): void {
         for (const contract of this.contracts.values()) {
             contract.restoreStates();
         }

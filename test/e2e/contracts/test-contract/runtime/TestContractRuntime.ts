@@ -40,7 +40,9 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeSelector(this.sha256Selector);
         calldata.writeBytesWithLength(value);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
 
         const reader = new BinaryReader(response.response);
@@ -52,7 +54,9 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeSelector(this.callThenGrowMemorySelector);
         calldata.writeU32(pages);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
 
         const reader = new BinaryReader(response.response);
@@ -65,7 +69,10 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeU32(pages);
         calldata.writeU32(numberOfCalls);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
+
         this.handleResponse(response);
     }
 
@@ -74,7 +81,9 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeSelector(this.growMemorySelector);
         calldata.writeU32(pages);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
 
         const reader = new BinaryReader(response.response);
@@ -86,7 +95,9 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeSelector(this.recursiveCallSelector);
         calldata.writeU32(numberOfCalls);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
     }
 
@@ -101,7 +112,9 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeBytes(firstStorageValue);
         calldata.writeBytes(secondStorageValue);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
 
         const reader = new BinaryReader(response.response);
@@ -117,7 +130,9 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeBytes(storageKey);
         calldata.writeBytes(storageValue);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
     }
 
@@ -130,7 +145,9 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeBytes(storageKey);
         calldata.writeBytes(storageValue);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
 
         const reader = new BinaryReader(response.response);
@@ -143,7 +160,9 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeBytes(storageKey);
         calldata.writeBytes(storageValue);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
     }
 

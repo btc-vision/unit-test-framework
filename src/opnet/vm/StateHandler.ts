@@ -26,10 +26,14 @@ class InternalStateHandler {
 
     public pushAllTempStatesToGlobal(): void {
         for (const [contract, tempState] of this.instancesTemporaryStates.entries()) {
-            if (!tempState.size) continue;
+            if (!tempState.size) {
+                console.log(`Skipped because states were purged.`);
+
+                continue;
+            }
 
             const globalState = this.states.get(contract);
-            console.log(`Pushing temp states to global for contract: ${contract.toString()}`);
+            console.log(`Pushing temp states to global for contract:`, contract);
 
             if (globalState) {
                 globalState.addAll(tempState);
@@ -67,9 +71,11 @@ class InternalStateHandler {
         const state = this.instancesTemporaryStates.get(contract);
         if (state) {
             state.clear();
-        } else {
-            this.instancesTemporaryStates.set(contract, new FastBigIntMap());
         }
+
+        this.instancesTemporaryStates.delete(contract);
+
+        console.log('instancesTemporaryStates', this.instancesTemporaryStates);
     }
 
     public globalLoad(contract: Address, pointer: bigint): bigint | undefined {

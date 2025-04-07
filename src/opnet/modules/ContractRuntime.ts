@@ -26,6 +26,7 @@ import { BytecodeManager } from './GetBytecode.js';
 import { FastBigIntMap } from './FastMap.js';
 import { AddressStack } from './AddressStack';
 import { StateHandler } from '../vm/StateHandler.js';
+import { ExecutionParameters } from '../interfaces/ExecuteParameters.js';
 
 export class ContractRuntime extends Logger {
     public readonly logColor: string = '#39b2f3';
@@ -207,31 +208,18 @@ export class ContractRuntime extends Logger {
         StateHandler.setTemporaryStates(this.address, this.statesBackup);
     }
 
-    public async onCall(
-        data: Buffer | Uint8Array,
-        sender: Address,
-        from: Address,
-        gasUsed: bigint,
-        memoryPagesUsed: bigint,
-    ): Promise<CallResponse> {
+    public async onCall(executionParameters: ExecutionParameters): Promise<CallResponse> {
         try {
-            const reader = new BinaryReader(data);
-            const selector: number = reader.readSelector();
-
             if (Blockchain.traceCalls) {
+                const reader = new BinaryReader(executionParameters.calldata);
+                const selector: number = reader.readSelector();
+
                 this.log(
                     `Called externally by another contract. Selector: ${selector.toString(16)}`,
                 );
             }
 
-            const response: CallResponse = await this.executeCall(
-                data as Buffer,
-                sender,
-                from,
-                gasUsed,
-                memoryPagesUsed,
-            );
-
+            const response: CallResponse = await this.executeCall(executionParameters);
             if (Blockchain.traceCalls) {
                 this.log(`Call response: ${response.response}`);
             }
@@ -319,51 +307,41 @@ export class ContractRuntime extends Logger {
         this.touchedBlocks = new Set([Blockchain.blockNumber]);
     }
 
-    protected async execute(
-        calldata: Buffer | Uint8Array,
-        sender?: Address,
-        txOrigin?: Address,
-        gasUsed?: bigint,
-    ): Promise<CallResponse> {
+    protected async execute(executionParameters: ExecutionParameters): Promise<CallResponse> {
         this.resetInternalStates();
 
-        const response = await this.executeCall(calldata, sender, txOrigin, gasUsed);
-        //console.log(response);
-
+        const response = await this.executeCall(executionParameters);
         if (response.status === 0 && !response.error) {
             StateHandler.pushAllTempStatesToGlobal();
         }
 
-        this.resetInternalStates();
+        console.log('purging after execute');
+        StateHandler.clearTemporaryStates(this.address);
 
         return response;
     }
 
-    protected async executeCall(
-        calldata: Buffer | Uint8Array,
-        sender?: Address,
-        txOrigin?: Address,
-        gasUsed?: bigint,
-        memoryPagesUsed: bigint = 0n,
-    ): Promise<CallResponse> {
+    protected async executeCall(executionParameters: ExecutionParameters): Promise<CallResponse> {
         // Deploy if not deployed.
         await this.deployContract();
 
-        this.gasUsed = gasUsed || 0n;
-        this.memoryPagesUsed = memoryPagesUsed;
+        this.gasUsed = executionParameters.gasUsed || 0n;
+        this.memoryPagesUsed = executionParameters.memoryPagesUsed || 0n;
 
         // Backup states
         this.backupStates();
 
         this.loadContract();
-        this.setEnvironment(sender, txOrigin);
+        this.setEnvironment(executionParameters.sender, executionParameters.txOrigin);
 
         let error: Error | undefined;
-        const response = await this.contract.execute(calldata).catch(async (e: unknown) => {
-            error = (await e) as Error;
+        const response = await this.contract
+            .execute(executionParameters.calldata)
+            .catch(async (e: unknown) => {
+                error = (await e) as Error;
 
-            return undefined;
-        });
+                return undefined;
+            });
 
         this.dispose();
 
@@ -610,13 +588,13 @@ export class ContractRuntime extends Logger {
             // Apply states override
             ca.applyStatesOverride(states);
 
-            const callResponse: CallResponse = await ca.onCall(
+            const callResponse: CallResponse = await ca.onCall({
                 calldata,
-                this.address,
-                Blockchain.txOrigin,
+                sender: this.address,
+                txOrigin: Blockchain.txOrigin,
                 gasUsed,
                 memoryPagesUsed,
-            );
+            });
 
             this.mergeStates(ca);
             this.checkReentrancy();
