@@ -19,6 +19,7 @@ import { ContractRuntime } from '../opnet/modules/ContractRuntime.js';
 import { BytecodeManager } from '../opnet/modules/GetBytecode.js';
 import { RustContractBinding } from '../opnet/vm/RustContractBinding.js';
 import { Transaction } from './Transaction.js';
+import { StateHandler } from '../opnet/vm/StateHandler.js';
 
 class BlockchainBase extends Logger {
     public readonly logColor: string = '#8332ff';
@@ -195,6 +196,8 @@ class BlockchainBase extends Logger {
     }
 
     public cleanup(): void {
+        StateHandler.purgeAll();
+
         for (const contract of this.contracts.values()) {
             contract.delete();
         }

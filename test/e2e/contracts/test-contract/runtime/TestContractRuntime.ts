@@ -23,14 +23,16 @@ export class TestContractRuntime extends ContractRuntime {
     );
     private readonly modifyStateSelector: number = this.getSelector('modifyState(bytes32,bytes32)');
 
-    public constructor(deployer: Address, address: Address, gasLimit: bigint = 350_000_000_000n) {
+    public constructor(
+        deployer: Address,
+        address: Address,
+        gasLimit: bigint = 100_000_000_000_000_000n,
+    ) {
         super({
             address: address,
             deployer: deployer,
             gasLimit,
         });
-
-        this.preserveState();
     }
 
     public async sha256(value: Uint8Array): Promise<Uint8Array> {
@@ -135,10 +137,7 @@ export class TestContractRuntime extends ContractRuntime {
         return reader.readBytes(32);
     }
 
-    public async modifyState(
-        storageKey: Uint8Array,
-        storageValue: Uint8Array,
-    ): Promise<void> {
+    public async modifyState(storageKey: Uint8Array, storageValue: Uint8Array): Promise<void> {
         const calldata = new BinaryWriter();
         calldata.writeSelector(this.modifyStateSelector);
         calldata.writeBytes(storageKey);
@@ -146,17 +145,6 @@ export class TestContractRuntime extends ContractRuntime {
 
         const response = await this.execute(calldata.getBuffer());
         this.handleResponse(response);
-    }
-
-    private getSelector(signature: string): number {
-        return Number(`0x${this.abiCoder.encodeSelector(signature)}`);
-    }
-
-    private handleResponse(response: CallResponse): void {
-        if (response.error) throw this.handleError(response.error);
-        if (!response.response) {
-            throw new Error('No response to decode');
-        }
     }
 
     protected handleError(error: Error): Error {
@@ -168,5 +156,16 @@ export class TestContractRuntime extends ContractRuntime {
             './test/e2e/contracts/test-contract/contract/build/TestContract.wasm',
             this.address,
         );
+    }
+
+    private getSelector(signature: string): number {
+        return Number(`0x${this.abiCoder.encodeSelector(signature)}`);
+    }
+
+    private handleResponse(response: CallResponse): void {
+        if (response.error) throw this.handleError(response.error);
+        if (!response.response) {
+            throw new Error('No response to decode');
+        }
     }
 }

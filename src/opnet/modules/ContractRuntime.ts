@@ -12,6 +12,8 @@ import {
     AccountTypeResponse,
     BitcoinNetworkRequest,
     EnvironmentVariablesRequest,
+    NEW_STORAGE_SLOT_GAS_COST,
+    UPDATED_STORAGE_SLOT_GAS_COST,
 } from '@btc-vision/op-vm';
 import bitcoin from '@btc-vision/bitcoin';
 import crypto from 'crypto';
@@ -23,7 +25,7 @@ import { ContractParameters, RustContract } from '../vm/RustContract.js';
 import { BytecodeManager } from './GetBytecode.js';
 import { FastBigIntMap } from './FastMap.js';
 import { AddressStack } from './AddressStack';
-import { clearTimeout } from 'node:timers';
+import { StateHandler } from '../vm/StateHandler.js';
 
 export class ContractRuntime extends Logger {
     public readonly logColor: string = '#39b2f3';
@@ -37,10 +39,6 @@ export class ContractRuntime extends Logger {
     // global states
     public address: Address;
     public readonly deployer: Address;
-
-    protected states: FastBigIntMap = new FastBigIntMap();
-    protected deploymentStates: FastBigIntMap = new FastBigIntMap();
-    protected shouldPreserveState: boolean = true;
 
     // internal states
     protected events: NetEvent[] = [];
@@ -136,21 +134,15 @@ export class ContractRuntime extends Logger {
         this.storedPointers = override.storedPointers;
     }
 
-    public preserveState(): void {
-        this.shouldPreserveState = true;
+    // Internal state management
+    /*public getStates(): FastBigIntMap {
+        return StateHandler.getTemporaryStates(this.address);
     }
 
-    public doNotPreserveState(): void {
-        this.shouldPreserveState = false;
-    }
-
-    public getStates(): FastBigIntMap {
-        return this.states;
-    }
-
+    // Internal state management
     public setStates(states: FastBigIntMap): void {
-        this.states = new FastBigIntMap(states);
-    }
+        StateHandler.setTemporaryStates(this.address, states);
+    }*/
 
     public delete(): void {
         this.dispose();
@@ -158,9 +150,7 @@ export class ContractRuntime extends Logger {
         delete this._contract;
         delete this._bytecode;
 
-        this.restoreStatesToDeployment();
         this.statesBackup.clear();
-
         this.events = [];
 
         this.callStack.clear();
@@ -170,7 +160,7 @@ export class ContractRuntime extends Logger {
     }
 
     public resetStates(): Promise<void> | void {
-        this.restoreStatesToDeployment();
+        StateHandler.resetGlobalStates(this.address);
     }
 
     public setEnvironment(
@@ -210,11 +200,11 @@ export class ContractRuntime extends Logger {
     }
 
     public backupStates(): void {
-        this.statesBackup = new FastBigIntMap(this.states);
+        this.statesBackup = new FastBigIntMap(StateHandler.getTemporaryStates(this.address));
     }
 
     public restoreStates(): void {
-        this.states = new FastBigIntMap(this.statesBackup);
+        StateHandler.setTemporaryStates(this.address, this.statesBackup);
     }
 
     public async onCall(
@@ -224,28 +214,44 @@ export class ContractRuntime extends Logger {
         gasUsed: bigint,
         memoryPagesUsed: bigint,
     ): Promise<CallResponse> {
-        const reader = new BinaryReader(data);
-        const selector: number = reader.readSelector();
+        try {
+            const reader = new BinaryReader(data);
+            const selector: number = reader.readSelector();
 
-        if (Blockchain.traceCalls) {
-            this.log(
-                `Called externally by another contract. Selector: ${selector.toString(16)}`, //- Calldata: ${calldata.toString('hex')}
+            if (Blockchain.traceCalls) {
+                this.log(
+                    `Called externally by another contract. Selector: ${selector.toString(16)}`,
+                );
+            }
+
+            const response: CallResponse = await this.executeCall(
+                data as Buffer,
+                sender,
+                from,
+                gasUsed,
+                memoryPagesUsed,
             );
+
+            if (Blockchain.traceCalls) {
+                this.log(`Call response: ${response.response}`);
+            }
+
+            return response;
+        } catch (e) {
+            const newResponse = this.handleError(e as Error);
+
+            return new CallResponse({
+                exitData: {
+                    status: 1,
+                    gasUsed: this.gasMax - 1n, // if we don't do gasMax here and the execution actually used some gas, the user is getting free gas on partial reverts, otherwise rust need to return the real used gas.
+                    data: Buffer.from(newResponse.message),
+                },
+                events: this.events,
+                callStack: this.callStack,
+                touchedAddresses: this.touchedAddresses,
+                touchedBlocks: this.touchedBlocks,
+            });
         }
-
-        const response: CallResponse = await this.executeCall(
-            data as Buffer,
-            sender,
-            from,
-            gasUsed,
-            memoryPagesUsed,
-        );
-
-        if (Blockchain.traceCalls) {
-            this.log(`Call response: ${response.response}`);
-        }
-
-        return response;
     }
 
     public dispose(): void {
@@ -263,43 +269,43 @@ export class ContractRuntime extends Logger {
     }
 
     public async deployContract(): Promise<void> {
-        if (this.deploymentStates.size || this.states.size) {
+        if (StateHandler.isDeployed(this.address)) {
             return;
         }
 
-        const statesBackup = new FastBigIntMap(this.states);
+        try {
+            this.loadContract();
+            this.setEnvironment(this.deployer, this.deployer);
 
-        this.loadContract();
-        this.setEnvironment(this.deployer, this.deployer);
+            const calldata = this.deploymentCalldata || Buffer.alloc(0);
 
-        const calldata = this.deploymentCalldata || Buffer.alloc(0);
+            let error: Error | undefined;
+            const response = await this.contract.onDeploy(calldata).catch((e: unknown) => {
+                error = e as Error;
+            });
 
-        let error: Error | undefined;
-        const response = await this.contract.onDeploy(calldata).catch((e: unknown) => {
-            error = e as Error;
-        });
+            if (response?.status !== 0) {
+                throw new Error(`OPNET: Unable to deploy contract`);
+            }
 
-        // Restore states
-        if (error || response?.status !== 0) {
-            this.states = statesBackup;
+            // Fatal error in rust or js
+            if (response == null) {
+                throw error;
+            }
+
+            // Mark as deployed
+            StateHandler.setDeployed(this.address, true);
+            StateHandler.pushAllTempStatesToGlobal();
+        } finally {
+            this.dispose();
+            this.resetInternalStates();
         }
-
-        // Fatal error in rust or js
-        if (response == null) {
-            throw error;
-        }
-
-        this.deploymentStates = new FastBigIntMap(this.states);
-
-        this.dispose();
-    }
-
-    public getDeploymentStates(): FastBigIntMap {
-        return this.deploymentStates;
     }
 
     protected resetInternalStates(): void {
         this.gasUsed = 0n;
+
+        StateHandler.clearTemporaryStates(this.address);
 
         this.loadedPointers = 0n;
         this.storedPointers = 0n;
@@ -321,7 +327,16 @@ export class ContractRuntime extends Logger {
     ): Promise<CallResponse> {
         this.resetInternalStates();
 
-        return await this.executeCall(calldata, sender, txOrigin, gasUsed);
+        const response = await this.executeCall(calldata, sender, txOrigin, gasUsed);
+        //console.log(response);
+
+        if (response.status === 0 && !response.error) {
+            StateHandler.pushAllTempStatesToGlobal();
+        }
+
+        this.resetInternalStates();
+
+        return response;
     }
 
     protected async executeCall(
@@ -337,10 +352,11 @@ export class ContractRuntime extends Logger {
         this.gasUsed = gasUsed || 0n;
         this.memoryPagesUsed = memoryPagesUsed;
 
+        // Backup states
+        this.backupStates();
+
         this.loadContract();
         this.setEnvironment(sender, txOrigin);
-
-        const statesBackup = new FastBigIntMap(this.states);
 
         let error: Error | undefined;
         const response = await this.contract.execute(calldata).catch(async (e: unknown) => {
@@ -353,7 +369,7 @@ export class ContractRuntime extends Logger {
 
         // Restore states
         if (error || response?.status !== 0) {
-            this.states = statesBackup;
+            this.restoreStates();
         }
 
         // Fatal error in rust
@@ -361,7 +377,7 @@ export class ContractRuntime extends Logger {
             throw error;
         }
 
-        this.gasUsed = response.gasUsed;
+        this.gasUsed = this.calculateGasCostSave(response.gasUsed);
 
         if (CONSENSUS.TRANSACTIONS.MAXIMUM_RECEIPT_LENGTH < response.data.length) {
             throw new Error(
@@ -370,12 +386,36 @@ export class ContractRuntime extends Logger {
         }
 
         return new CallResponse({
-            exitData: response,
+            exitData: {
+                ...response,
+                gasUsed: this.gasUsed,
+            },
             events: this.events,
             callStack: this.callStack,
             touchedAddresses: this.touchedAddresses,
             touchedBlocks: this.touchedBlocks,
         });
+    }
+
+    protected calculateGasCostSave(gasCost: bigint): bigint {
+        const states = StateHandler.getTemporaryStates(this.address);
+
+        let cost: bigint = 0n;
+        for (const [key, value] of states) {
+            const currentValue = StateHandler.globalLoad(this.address, key);
+
+            if (currentValue === undefined) {
+                cost += NEW_STORAGE_SLOT_GAS_COST;
+            } else if (currentValue !== value) {
+                cost += UPDATED_STORAGE_SLOT_GAS_COST;
+            }
+
+            if (this.gasMax < gasCost + cost) {
+                throw new Error('out of gas while saving state');
+            }
+        }
+
+        return gasCost + cost;
     }
 
     protected handleError(error: Error): Error {
@@ -394,10 +434,6 @@ export class ContractRuntime extends Logger {
 
     protected loadContract(): void {
         try {
-            if (!this.shouldPreserveState) {
-                this.states = new FastBigIntMap(this.deploymentStates);
-            }
-            
             this._contract = new RustContract(this.generateParams());
         } catch (e) {
             if (this._contract) {
@@ -410,10 +446,6 @@ export class ContractRuntime extends Logger {
 
             throw e;
         }
-    }
-
-    private restoreStatesToDeployment(): void {
-        this.states = new FastBigIntMap(this.deploymentStates);
     }
 
     private async deployContractAtAddress(data: Buffer): Promise<Buffer | Uint8Array> {
@@ -448,8 +480,6 @@ export class ContractRuntime extends Logger {
             bytecode: requestedContractBytecode,
         });
 
-        newContract.preserveState();
-
         if (Blockchain.traceDeployments) {
             this.info(`Deploying contract at ${deployedContractAddress.p2tr(Blockchain.network)}`);
         }
@@ -473,9 +503,12 @@ export class ContractRuntime extends Logger {
 
     private load(data: Buffer): Buffer | Uint8Array {
         const reader = new BinaryReader(data);
-        const pointer = reader.readU256();
-        const value = this.states.get(pointer);
-        const isSlotWarm = value !== undefined;
+        const pointer: bigint = reader.readU256();
+
+        let value: bigint | undefined = StateHandler.getTemporaryStates(this.address).get(pointer);
+        if (value === undefined) {
+            value = StateHandler.globalLoad(this.address, pointer);
+        }
 
         if (Blockchain.tracePointers) {
             this.log(`Attempting to load pointer ${pointer} - value ${value || 0n}`);
@@ -483,6 +516,7 @@ export class ContractRuntime extends Logger {
 
         this.loadedPointers++;
 
+        const isSlotWarm = value !== undefined;
         const response: BinaryWriter = new BinaryWriter();
         response.writeU256(value || 0n);
         response.writeBoolean(isSlotWarm);
@@ -499,17 +533,13 @@ export class ContractRuntime extends Logger {
             this.log(`Attempting to store pointer ${pointer} - value ${value}`);
         }
 
+        const tempStates = StateHandler.getTemporaryStates(this.address);
+
         // Charge gas here.
-        const isSlotWarm = this.states.has(pointer);
+        const isSlotWarm: boolean =
+            tempStates.has(pointer) || StateHandler.globalHas(this.address, pointer);
 
-        // Just do this in rust??
-        /*if (isSlotWarm) {
-            this.gasUsed += UPDATED_STORAGE_SLOT_GAS_COST;
-        } else {
-            this.gasUsed += NEW_STORAGE_SLOT_GAS_COST;
-        }*/
-
-        this.states.set(pointer, value);
+        tempStates.set(pointer, value);
         this.storedPointers++;
 
         const response: BinaryWriter = new BinaryWriter();
@@ -565,9 +595,6 @@ export class ContractRuntime extends Logger {
                 memoryPagesUsed: memoryPagesUsed,
             });
 
-            ca.preserveState();
-            ca.setStates(contract.getStates());
-
             await ca.init();
 
             const states: StateOverride = {
@@ -591,14 +618,12 @@ export class ContractRuntime extends Logger {
                 memoryPagesUsed,
             );
 
-            contract.setStates(ca.getStates());
+            this.mergeStates(ca);
+            this.checkReentrancy();
 
             try {
                 ca.delete();
             } catch {}
-
-            this.mergeStates(ca);
-            this.checkReentrancy();
 
             return this.buildCallResponse(
                 isAddressWarm,

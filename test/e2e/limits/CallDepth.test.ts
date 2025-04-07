@@ -1,7 +1,7 @@
 import { Address } from '@btc-vision/transaction';
 import { Assert, Blockchain, opnet, OPNetUnit } from '../../../src';
 import { TestContractRuntime } from '../contracts/test-contract/runtime/TestContractRuntime';
-import { MAX_CALL_STACK_DEPTH } from '../../../src/contracts/configs';
+import { CONSENSUS } from '../../../src/contracts/configs.js';
 
 await opnet('Call depth tests', async (vm: OPNetUnit) => {
     let contract: TestContractRuntime;
@@ -28,12 +28,12 @@ await opnet('Call depth tests', async (vm: OPNetUnit) => {
     });
 
     await vm.it('should successfully do the maximum allowed nested calls', async () => {
-        await contract.recursiveCall(MAX_CALL_STACK_DEPTH - 1);
+        await contract.recursiveCall(CONSENSUS.TRANSACTIONS.MAXIMUM_CALL_DEPTH - 1);
     });
 
     await vm.it('should fail to do more nested calls than the maximum allowed', async () => {
         await Assert.expect(async () => {
-            await contract.recursiveCall(MAX_CALL_STACK_DEPTH);
+            await contract.recursiveCall(CONSENSUS.TRANSACTIONS.MAXIMUM_CALL_DEPTH);
         }).toThrow();
     });
 });

@@ -65,8 +65,6 @@ export class OP_20 extends ContractRuntime {
 
         this.file = details.file;
         this.decimals = details.decimals;
-
-        this.preserveState();
     }
 
     public static decodeBurnEvent(data: Buffer | Uint8Array): BurnEvent {

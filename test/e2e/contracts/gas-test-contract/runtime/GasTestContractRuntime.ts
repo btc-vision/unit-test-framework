@@ -8,8 +8,6 @@ export class GasTestContractRuntime extends ContractRuntime {
             deployer: deployer,
             gasLimit,
         });
-
-        this.preserveState();
     }
 
     public async main(): Promise<CallResponse> {
@@ -21,13 +19,6 @@ export class GasTestContractRuntime extends ContractRuntime {
         return response;
     }
 
-    private handleResponse(response: CallResponse): void {
-        if (response.error) throw this.handleError(response.error);
-        if (!response.response) {
-            throw new Error('No response to decode');
-        }
-    }
-
     protected handleError(error: Error): Error {
         return new Error(`(in test contract: ${this.address}) OPNET: ${error.message}`);
     }
@@ -37,5 +28,12 @@ export class GasTestContractRuntime extends ContractRuntime {
             './test/e2e/contracts/gas-test-contract/contract/build/GasTestContract.wasm',
             this.address,
         );
+    }
+
+    private handleResponse(response: CallResponse): void {
+        if (response.error) throw this.handleError(response.error);
+        if (!response.response) {
+            throw new Error('No response to decode');
+        }
     }
 }

@@ -29,6 +29,12 @@ export class FastBigIntMap {
         this.keyOrder = [...map.keyOrder];
     }
 
+    public addAll(map: FastBigIntMap): void {
+        for (const [key, value] of map.entries()) {
+            this.set(key, value);
+        }
+    }
+
     /**
      * Inserts or updates the key/value. Returns `this` to allow chaining.
      */
