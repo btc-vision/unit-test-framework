@@ -1,6 +1,11 @@
 import { Address, AddressMap, EcKeyPair, TapscriptVerificator } from '@btc-vision/transaction';
 import { Logger } from '@btc-vision/logger';
-import { AccountTypeResponse, BlockHashRequest, ContractManager, ThreadSafeJsImportResponse } from '@btc-vision/op-vm';
+import {
+    AccountTypeResponse,
+    BlockHashRequest,
+    ContractManager,
+    ThreadSafeJsImportResponse,
+} from '@btc-vision/op-vm';
 import bitcoin, { Network } from '@btc-vision/bitcoin';
 import crypto from 'crypto';
 import {
@@ -14,6 +19,7 @@ import { ContractRuntime } from '../opnet/modules/ContractRuntime.js';
 import { BytecodeManager } from '../opnet/modules/GetBytecode.js';
 import { RustContractBinding } from '../opnet/vm/RustContractBinding.js';
 import { Transaction } from './Transaction.js';
+import { StateHandler } from '../opnet/vm/StateHandler.js';
 
 class BlockchainBase extends Logger {
     public readonly logColor: string = '#8332ff';
@@ -112,7 +118,7 @@ class BlockchainBase extends Logger {
             this.inputsJSFunction,
             this.outputsJSFunction,
             this.accountTypeJSFunction,
-            this.blockHashJSFunction
+            this.blockHashJSFunction,
         );
     }
 
@@ -140,6 +146,7 @@ class BlockchainBase extends Logger {
     }
 
     public clearContracts(): void {
+        StateHandler.purgeAll();
         this.contracts.clear();
     }
 
@@ -168,13 +175,13 @@ class BlockchainBase extends Logger {
         return this.contracts.has(address);
     }
 
-    public backup(): void {
+    public backupStates(): void {
         for (const contract of this.contracts.values()) {
             contract.backupStates();
         }
     }
 
-    public restore(): void {
+    public restoreStates(): void {
         for (const contract of this.contracts.values()) {
             contract.restoreStates();
         }
@@ -190,6 +197,8 @@ class BlockchainBase extends Logger {
     }
 
     public cleanup(): void {
+        StateHandler.purgeAll();
+
         for (const contract of this.contracts.values()) {
             contract.delete();
         }

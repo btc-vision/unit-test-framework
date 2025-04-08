@@ -65,8 +65,6 @@ export class OP_20 extends ContractRuntime {
 
         this.file = details.file;
         this.decimals = details.decimals;
-
-        this.preserveState();
     }
 
     public static decodeBurnEvent(data: Buffer | Uint8Array): BurnEvent {
@@ -97,7 +95,10 @@ export class OP_20 extends ContractRuntime {
         const writer = new BinaryWriter();
         writer.writeSelector(this.totalSupplySelector);
 
-        const result = await this.execute(writer.getBuffer());
+        const result = await this.execute({
+            calldata: writer.getBuffer(),
+            saveStates: false,
+        });
 
         const response = result.response;
         if (!response) {
@@ -118,7 +119,11 @@ export class OP_20 extends ContractRuntime {
         calldata.writeU256(0n);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute(buf, this.deployer, this.deployer);
+        const result = await this.execute({
+            calldata: buf,
+            sender: this.deployer,
+            txOrigin: this.deployer,
+        });
 
         const response = result.response;
         if (!response) {
@@ -140,7 +145,11 @@ export class OP_20 extends ContractRuntime {
         calldata.writeU256(amount);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute(buf, from, from);
+        const result = await this.execute({
+            calldata: buf,
+            sender: from,
+            txOrigin: from,
+        });
 
         const response = result.response;
         if (!response) {
@@ -161,7 +170,10 @@ export class OP_20 extends ContractRuntime {
         calldata.writeAddress(spender);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute(buf);
+        const result = await this.execute({
+            calldata: buf,
+            saveStates: false,
+        });
 
         const response = result.response;
         if (!response) {
@@ -179,7 +191,11 @@ export class OP_20 extends ContractRuntime {
         calldata.writeAddressValueTuple(map);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute(buf, this.deployer, this.deployer);
+        const result = await this.execute({
+            calldata: buf,
+            sender: this.deployer,
+            txOrigin: this.deployer,
+        });
 
         const response = result.response;
         if (!response) {
@@ -197,7 +213,11 @@ export class OP_20 extends ContractRuntime {
         calldata.writeU256(amount);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute(buf, this.deployer, this.deployer);
+        const result = await this.execute({
+            calldata: buf,
+            sender: this.deployer,
+            txOrigin: this.deployer,
+        });
 
         const response = result.response;
         if (!response) {
@@ -218,7 +238,11 @@ export class OP_20 extends ContractRuntime {
         calldata.writeU256(amount);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute(Buffer.from(buf), owner, owner);
+        const result = await this.execute({
+            calldata: buf,
+            sender: owner,
+            txOrigin: owner,
+        });
 
         const response = result.response;
         if (!response) {
@@ -241,7 +265,11 @@ export class OP_20 extends ContractRuntime {
         calldata.writeU256(amount);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute(buf, from, from);
+        const result = await this.execute({
+            calldata: buf,
+            sender: from,
+            txOrigin: from,
+        });
 
         const response = result.response;
         if (!response) {
@@ -263,7 +291,10 @@ export class OP_20 extends ContractRuntime {
         calldata.writeAddress(owner);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute(Buffer.from(buf));
+        const result = await this.execute({
+            calldata: buf,
+            saveStates: false,
+        });
 
         const response = result.response;
         if (result.error || !response) {

@@ -85,6 +85,43 @@ export class RustContract {
         return this._params;
     }
 
+    public static decodeRevertData(revertDataBytes: Uint8Array): Error {
+        if (RustContract.startsWithErrorSelector(revertDataBytes)) {
+            const decoder = new TextDecoder();
+            const revertMessage = decoder.decode(revertDataBytes.slice(6));
+
+            return new Error(revertMessage);
+        } else {
+            return new Error(`Execution reverted: 0x${this.bytesToHexString(revertDataBytes)}`);
+        }
+    }
+
+    private static startsWithErrorSelector(revertDataBytes: Uint8Array) {
+        const errorSelectorBytes = Uint8Array.from([0x63, 0x73, 0x9d, 0x5c]);
+        return (
+            revertDataBytes.length >= 4 &&
+            this.areBytesEqual(revertDataBytes.slice(0, 4), errorSelectorBytes)
+        );
+    }
+
+    private static areBytesEqual(a: Uint8Array, b: Uint8Array) {
+        if (a.length !== b.length) return false;
+
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bytesToHexString(byteArray: Uint8Array): string {
+        return Array.from(byteArray, function (byte) {
+            return ('0' + (byte & 0xff).toString(16)).slice(-2);
+        }).join('');
+    }
+
     public instantiate(): void {
         if (this._id == null) throw new Error('Contract is not instantiated');
         if (this._instantiated) return;
@@ -186,18 +223,7 @@ export class RustContract {
             return new Error(`Execution reverted`);
         } else {
             const revertDataBytes = Uint8Array.from(revertData);
-            return this.decodeRevertData(revertDataBytes);
-        }
-    }
-
-    private decodeRevertData(revertDataBytes: Uint8Array): Error {
-        if (this.startsWithErrorSelector(revertDataBytes)) {
-            const decoder = new TextDecoder();
-            const revertMessage = decoder.decode(revertDataBytes.slice(6));
-
-            return new Error(`Execution reverted: ${revertMessage}`);
-        } else {
-            return new Error(`Execution reverted: 0x${this.bytesToHexString(revertDataBytes)}`);
+            return RustContract.decodeRevertData(revertDataBytes);
         }
     }
 
@@ -223,31 +249,5 @@ export class RustContract {
         } else {
             return err;
         }
-    }
-
-    private startsWithErrorSelector(revertDataBytes: Uint8Array) {
-        const errorSelectorBytes = Uint8Array.from([0x63, 0x73, 0x9d, 0x5c]);
-        return (
-            revertDataBytes.length >= 4 &&
-            this.areBytesEqual(revertDataBytes.slice(0, 4), errorSelectorBytes)
-        );
-    }
-
-    private areBytesEqual(a: Uint8Array, b: Uint8Array) {
-        if (a.length !== b.length) return false;
-
-        for (let i = 0; i < a.length; i++) {
-            if (a[i] !== b[i]) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private bytesToHexString(byteArray: Uint8Array): string {
-        return Array.from(byteArray, function (byte) {
-            return ('0' + (byte & 0xff).toString(16)).slice(-2);
-        }).join('');
     }
 }

@@ -1,17 +1,16 @@
 {
     "targets": {
         "debug": {
-            "outFile": "build/TestContract.wasm",
-            "textFile": "build/TestContract.wat"
+            "outFile": "build/TestContract.wasm"
         }
     },
     "options": {
         "transform": "@btc-vision/opnet-transform",
         "sourceMap": false,
         "optimizeLevel": 3,
-        "shrinkLevel": 2,
+        "shrinkLevel": 1,
         "converge": true,
-        "noAssert": true,
+        "noAssert": false,
         "disable": [
             "mutable-globals",
             "sign-extension",

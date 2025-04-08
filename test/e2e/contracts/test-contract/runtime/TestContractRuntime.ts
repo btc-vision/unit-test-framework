@@ -23,14 +23,16 @@ export class TestContractRuntime extends ContractRuntime {
     );
     private readonly modifyStateSelector: number = this.getSelector('modifyState(bytes32,bytes32)');
 
-    public constructor(deployer: Address, address: Address, gasLimit: bigint = 350_000_000_000n) {
+    public constructor(
+        deployer: Address,
+        address: Address,
+        gasLimit: bigint = 100_000_000_000_000_000n,
+    ) {
         super({
             address: address,
             deployer: deployer,
             gasLimit,
         });
-
-        this.preserveState();
     }
 
     public async sha256(value: Uint8Array): Promise<Uint8Array> {
@@ -38,7 +40,9 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeSelector(this.sha256Selector);
         calldata.writeBytesWithLength(value);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
 
         const reader = new BinaryReader(response.response);
@@ -50,7 +54,9 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeSelector(this.callThenGrowMemorySelector);
         calldata.writeU32(pages);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
 
         const reader = new BinaryReader(response.response);
@@ -63,7 +69,10 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeU32(pages);
         calldata.writeU32(numberOfCalls);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
+
         this.handleResponse(response);
     }
 
@@ -72,7 +81,9 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeSelector(this.growMemorySelector);
         calldata.writeU32(pages);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
 
         const reader = new BinaryReader(response.response);
@@ -84,7 +95,9 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeSelector(this.recursiveCallSelector);
         calldata.writeU32(numberOfCalls);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
     }
 
@@ -99,7 +112,9 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeBytes(firstStorageValue);
         calldata.writeBytes(secondStorageValue);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
 
         const reader = new BinaryReader(response.response);
@@ -115,7 +130,9 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeBytes(storageKey);
         calldata.writeBytes(storageValue);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
     }
 
@@ -128,35 +145,25 @@ export class TestContractRuntime extends ContractRuntime {
         calldata.writeBytes(storageKey);
         calldata.writeBytes(storageValue);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
 
         const reader = new BinaryReader(response.response);
         return reader.readBytes(32);
     }
 
-    public async modifyState(
-        storageKey: Uint8Array,
-        storageValue: Uint8Array,
-    ): Promise<void> {
+    public async modifyState(storageKey: Uint8Array, storageValue: Uint8Array): Promise<void> {
         const calldata = new BinaryWriter();
         calldata.writeSelector(this.modifyStateSelector);
         calldata.writeBytes(storageKey);
         calldata.writeBytes(storageValue);
 
-        const response = await this.execute(calldata.getBuffer());
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+        });
         this.handleResponse(response);
-    }
-
-    private getSelector(signature: string): number {
-        return Number(`0x${this.abiCoder.encodeSelector(signature)}`);
-    }
-
-    private handleResponse(response: CallResponse): void {
-        if (response.error) throw this.handleError(response.error);
-        if (!response.response) {
-            throw new Error('No response to decode');
-        }
     }
 
     protected handleError(error: Error): Error {
@@ -168,5 +175,16 @@ export class TestContractRuntime extends ContractRuntime {
             './test/e2e/contracts/test-contract/contract/build/TestContract.wasm',
             this.address,
         );
+    }
+
+    private getSelector(signature: string): number {
+        return Number(`0x${this.abiCoder.encodeSelector(signature)}`);
+    }
+
+    private handleResponse(response: CallResponse): void {
+        if (response.error) throw this.handleError(response.error);
+        if (!response.response) {
+            throw new Error('No response to decode');
+        }
     }
 }

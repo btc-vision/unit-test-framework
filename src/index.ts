@@ -12,6 +12,7 @@ export * from './contracts/OP_20.js';
 /** Interfaces */
 export * from './opnet/interfaces/CallResponse.js';
 export * from './opnet/interfaces/ContractDetails.js';
+export * from './opnet/interfaces/ExecuteParameters.js';
 
 /** Asserts */
 export * from './opnet/unit/Assertion.js';
@@ -27,3 +28,8 @@ export * from './opnet/modules/ContractRuntime.js';
 export * from './blockchain/Transaction.js';
 
 export * from './opnet/modules/FastMap.js';
+
+export * from './opnet/vm/StateHandler.js';
+export * from './rules/IConsensusRules.js';
+export * from './rules/versions/RosewellConsensus.js';
+export * from './rules/versions/ConsensusMetadata.js';
