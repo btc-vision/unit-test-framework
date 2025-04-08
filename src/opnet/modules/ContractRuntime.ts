@@ -619,11 +619,12 @@ export class ContractRuntime extends Logger {
             });
 
             this.mergeStates(ca);
-            this.checkReentrancy();
 
             try {
                 ca.delete();
             } catch {}
+
+            this.checkReentrancy();
 
             return this.buildCallResponse(
                 isAddressWarm,
