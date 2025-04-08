@@ -1,7 +1,7 @@
 {
     "type": "module",
     "name": "@btc-vision/unit-test-framework",
-    "version": "0.0.26",
+    "version": "0.0.27",
     "description": "OP_NET Unit Test Framework. This package contains all the necessary tools to run unit tests for OP_NET smart contracts.",
     "main": "build/index.js",
     "scripts": {
