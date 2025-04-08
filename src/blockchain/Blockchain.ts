@@ -4,6 +4,7 @@ import {
     AccountTypeResponse,
     BlockHashRequest,
     ContractManager,
+    BlockHashResponse,
     ThreadSafeJsImportResponse,
 } from '@btc-vision/op-vm';
 import bitcoin, { Network } from '@btc-vision/bitcoin';
@@ -285,18 +286,18 @@ class BlockchainBase extends Logger {
         _: never,
         value: ThreadSafeJsImportResponse,
     ): Promise<Buffer | Uint8Array> => {
-        if (this.enableDebug) console.log('LOAD', value.buffer);
+            if (this.enableDebug) console.log('LOAD', value.buffer);
 
-        const u = new Uint8Array(value.buffer);
-        const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
-        const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
+            const u = new Uint8Array(value.buffer);
+            const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
+            const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
 
-        if (!c) {
-            throw new Error('Binding not found');
-        }
+            if (!c) {
+                throw new Error('Binding not found');
+            }
 
-        return c.load(buf);
-    };
+            return c.load(buf);
+        };
 
     private storeJSFunction: (
         _: never,
@@ -305,19 +306,19 @@ class BlockchainBase extends Logger {
         _: never,
         value: ThreadSafeJsImportResponse,
     ): Promise<Buffer | Uint8Array> => {
-        if (this.enableDebug) console.log('STORE', value.buffer);
+            if (this.enableDebug) console.log('STORE', value.buffer);
 
-        const u = new Uint8Array(value.buffer);
-        const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
+            const u = new Uint8Array(value.buffer);
+            const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
 
-        const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
+            const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
 
-        if (!c) {
-            throw new Error('Binding not found');
-        }
+            if (!c) {
+                throw new Error('Binding not found');
+            }
 
-        return c.store(buf);
-    };
+            return c.store(buf);
+        };
 
     private callJSFunction: (
         _: never,
@@ -326,19 +327,19 @@ class BlockchainBase extends Logger {
         _: never,
         value: ThreadSafeJsImportResponse,
     ): Promise<Buffer | Uint8Array> => {
-        if (this.enableDebug) console.log('CALL', value.buffer);
+            if (this.enableDebug) console.log('CALL', value.buffer);
 
-        const u = new Uint8Array(value.buffer);
-        const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
+            const u = new Uint8Array(value.buffer);
+            const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
 
-        const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
+            const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
 
-        if (!c) {
-            throw new Error('Binding not found');
-        }
+            if (!c) {
+                throw new Error('Binding not found');
+            }
 
-        return c.call(buf);
-    };
+            return c.call(buf);
+        };
 
     private deployContractAtAddressJSFunction: (
         _: never,
@@ -347,19 +348,19 @@ class BlockchainBase extends Logger {
         _: never,
         value: ThreadSafeJsImportResponse,
     ): Promise<Buffer | Uint8Array> => {
-        if (this.enableDebug) console.log('DEPLOY', value.buffer);
+            if (this.enableDebug) console.log('DEPLOY', value.buffer);
 
-        const u = new Uint8Array(value.buffer);
-        const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
+            const u = new Uint8Array(value.buffer);
+            const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
 
-        const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
+            const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
 
-        if (!c) {
-            throw new Error('Binding not found');
-        }
+            if (!c) {
+                throw new Error('Binding not found');
+            }
 
-        return c.deployContractAtAddress(buf);
-    };
+            return c.deployContractAtAddress(buf);
+        };
 
     private logJSFunction: (_: never, result: ThreadSafeJsImportResponse) => Promise<void> = (
         _: never,
@@ -410,15 +411,15 @@ class BlockchainBase extends Logger {
         _: never,
         value: ThreadSafeJsImportResponse,
     ): Promise<Buffer | Uint8Array> => {
-        if (this.enableDebug) console.log('INPUTS', value);
+            if (this.enableDebug) console.log('INPUTS', value);
 
-        const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
-        if (!c) {
-            throw new Error('Binding not found');
-        }
+            const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
+            if (!c) {
+                throw new Error('Binding not found');
+            }
 
-        return c.inputs();
-    };
+            return c.inputs();
+        };
 
     private outputsJSFunction: (
         _: never,
@@ -427,15 +428,15 @@ class BlockchainBase extends Logger {
         _: never,
         value: ThreadSafeJsImportResponse,
     ): Promise<Buffer | Uint8Array> => {
-        if (this.enableDebug) console.log('OUTPUT', value);
+            if (this.enableDebug) console.log('OUTPUT', value);
 
-        const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
-        if (!c) {
-            throw new Error('Binding not found');
-        }
+            const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
+            if (!c) {
+                throw new Error('Binding not found');
+            }
 
-        return c.outputs();
-    };
+            return c.outputs();
+        };
 
     private accountTypeJSFunction: (
         _: never,
@@ -444,37 +445,37 @@ class BlockchainBase extends Logger {
         _: never,
         value: ThreadSafeJsImportResponse,
     ): Promise<AccountTypeResponse> => {
-        if (this.enableDebug) console.log('ACCOUNT TYPE', value.buffer);
+            if (this.enableDebug) console.log('ACCOUNT TYPE', value.buffer);
 
-        const u = new Uint8Array(value.buffer);
-        const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
+            const u = new Uint8Array(value.buffer);
+            const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
 
-        const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
+            const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
 
-        if (!c) {
-            throw new Error('Binding not found');
-        }
+            if (!c) {
+                throw new Error('Binding not found');
+            }
 
-        return c.accountType(buf);
-    };
+            return c.accountType(buf);
+        };
 
     private blockHashJSFunction: (
         _: never,
         result: BlockHashRequest,
-    ) => Promise<Buffer | Uint8Array> = (
+    ) => Promise<BlockHashResponse> = (
         _: never,
         value: BlockHashRequest,
-    ): Promise<Buffer | Uint8Array> => {
-        if (this.enableDebug) console.log('BLOCK HASH', value.blockNumber);
+    ): Promise<BlockHashResponse> => {
+            if (this.enableDebug) console.log('BLOCK HASH', value.blockNumber);
 
-        const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
+            const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
 
-        if (!c) {
-            throw new Error('Binding not found');
-        }
+            if (!c) {
+                throw new Error('Binding not found');
+            }
 
-        return c.blockHash(value.blockNumber);
-    };
+            return c.blockHash(value.blockNumber);
+        };
 
     private getRandomBytes(length: number): Buffer {
         return Buffer.from(crypto.getRandomValues(new Uint8Array(length)));

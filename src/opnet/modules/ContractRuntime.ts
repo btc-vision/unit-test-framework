@@ -14,6 +14,7 @@ import {
     BitcoinNetworkRequest,
     EnvironmentVariablesRequest,
     ExitDataResponse,
+    BlockHashResponse,
     NEW_STORAGE_SLOT_GAS_COST,
     UPDATED_STORAGE_SLOT_GAS_COST,
 } from '@btc-vision/op-vm';
@@ -527,7 +528,8 @@ export class ContractRuntime extends Logger {
 
             const address: Address = reader.readAddress();
             const salt: Buffer = Buffer.from(reader.readBytes(32));
-            const calldata: Buffer = Buffer.from(reader.readBytes(reader.bytesLeft()));
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+            const calldata: Buffer = Buffer.from(reader.readBytes(reader.bytesLeft() | 0));
 
             if (Blockchain.traceDeployments) {
                 const saltBig = BigInt(
@@ -955,9 +957,18 @@ export class ContractRuntime extends Logger {
         });
     }
 
-    private getBlockHash(blockNumber: bigint): Promise<Buffer> {
+    private getBlockHash(blockNumber: bigint): Promise<BlockHashResponse> {
         const fakeBlockHash = crypto.createHash('sha256').update(blockNumber.toString()).digest();
-        return Promise.resolve(fakeBlockHash);
+
+        const isBlockWarm = this.touchedBlocks.has(blockNumber);
+        if (!isBlockWarm) {
+            this.touchedBlocks.add(blockNumber);
+        }
+
+        return Promise.resolve({
+            blockHash: fakeBlockHash,
+            isBlockWarm,
+        });
     }
 
     private fakeLoad(): void {
