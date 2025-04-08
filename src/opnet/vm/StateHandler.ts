@@ -16,15 +16,6 @@ class InternalStateHandler {
         return false;
     }
 
-    public setDeployed(contract: Address, deployed: boolean): void {
-        const state = this.deployed.get(contract);
-        if (state) {
-            this.deployed.set(contract, deployed);
-        } else {
-            this.deployed.set(contract, deployed);
-        }
-    }
-
     public resetPendingDeployments(): void {
         this.pendingDeployments.clear();
     }

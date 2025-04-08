@@ -641,7 +641,6 @@ export class ContractRuntime extends Logger {
         this.callStack = states.callStack;
 
         this.touchedBlocks = states.touchedBlocks;
-        this.touchedBlocks = states.touchedBlocks;
         this.totalEventLength = states.totalEventLength;
 
         this.loadedPointers = states.loadedPointers;
