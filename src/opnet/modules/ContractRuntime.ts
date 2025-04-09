@@ -412,7 +412,7 @@ export class ContractRuntime extends Logger {
                 `OP_NET: Maximum receipt length exceeded. (${response.data.length} > ${CONSENSUS.TRANSACTIONS.MAXIMUM_RECEIPT_LENGTH})`,
             );
         }
-        
+
         return new CallResponse({
             exitData: {
                 ...response,
