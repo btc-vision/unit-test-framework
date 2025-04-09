@@ -220,7 +220,9 @@ export class ContractRuntime extends Logger {
             return response;
         } catch (e) {
             if (this.logUnexpectedErrors) {
-                this.warn(`(debug) call failed with error: ${(e as Error).message}`);
+                this.warn(
+                    `(debug ${BytecodeManager.getFileName(this.address)}) call failed with error: ${(e as Error).message}`,
+                );
             }
 
             const newResponse = this.handleError(e as Error);
@@ -754,7 +756,9 @@ export class ContractRuntime extends Logger {
             );
         } catch (e) {
             if (this.logUnexpectedErrors) {
-                this.warn(`(debug) call failed with error: ${(e as Error).message}`);
+                this.warn(
+                    `(debug ${BytecodeManager.getFileName(this.address)}) call failed with error: ${(e as Error).message}`,
+                );
             }
 
             return this.buildCallResponse(false, 0n, 1, this.getErrorAsBuffer(e as Error));
