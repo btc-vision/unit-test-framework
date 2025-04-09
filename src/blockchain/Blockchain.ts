@@ -220,6 +220,8 @@ class BlockchainBase extends Logger {
     }
 
     public async init(): Promise<void> {
+        StateHandler.purgeAll();
+
         this.dispose();
 
         for (const contract of this.contracts.values()) {
