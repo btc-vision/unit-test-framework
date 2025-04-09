@@ -33,3 +33,5 @@ export * from './opnet/vm/StateHandler.js';
 export * from './rules/IConsensusRules.js';
 export * from './rules/versions/RosewellConsensus.js';
 export * from './rules/versions/ConsensusMetadata.js';
+
+export * from './utils/TransactionUtils.js';

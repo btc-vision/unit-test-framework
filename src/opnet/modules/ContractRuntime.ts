@@ -221,7 +221,7 @@ export class ContractRuntime extends Logger {
         } catch (e) {
             if (this.logUnexpectedErrors) {
                 this.warn(
-                    `(debug ${BytecodeManager.getFileName(this.address)}) call failed with error: ${(e as Error).message}`,
+                    `(debug on call ${BytecodeManager.getFileName(this.address)}) call failed with error: ${(e as Error).message}`,
                 );
             }
 
@@ -357,6 +357,8 @@ export class ContractRuntime extends Logger {
         // Deploy if not deployed.
         const deployment = await this.deployContract(false);
         if (deployment) {
+            this.gasUsed = 0n; // reset.
+
             if (deployment.status !== 0) {
                 if (this.logUnexpectedErrors) {
                     this.warn(`Unexpected error during deployment.`);

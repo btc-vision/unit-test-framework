@@ -8,7 +8,7 @@ class InternalStateHandler {
     protected pendingDeployments: AddressMap<boolean> = new AddressMap();
 
     public isDeployed(contract: Address): boolean {
-        const state = this.deployed.get(contract) || this.pendingDeployments.get(contract);
+        const state = this.pendingDeployments.get(contract) || this.deployed.get(contract);
         if (state) {
             return state;
         }
@@ -31,9 +31,9 @@ class InternalStateHandler {
     public markAllPendingDeploymentsAsDone(): void {
         for (const contract of this.pendingDeployments.keys()) {
             this.deployed.set(contract, true);
-
-            this.pendingDeployments.delete(contract);
         }
+
+        this.pendingDeployments.clear();
     }
 
     public pushAllTempStatesToGlobal(): void {
