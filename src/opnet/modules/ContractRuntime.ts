@@ -61,6 +61,8 @@ export class ContractRuntime extends Logger {
     private readonly potentialBytecode?: Buffer;
     private readonly deploymentCalldata?: Buffer;
 
+    private logUnexpectedErrors: boolean = true;
+
     // debug
     private readonly isDebugMode = true;
 
@@ -217,6 +219,10 @@ export class ContractRuntime extends Logger {
 
             return response;
         } catch (e) {
+            if (this.logUnexpectedErrors) {
+                this.warn(`(debug) call failed with error: ${(e as Error).message}`);
+            }
+
             const newResponse = this.handleError(e as Error);
 
             return new CallResponse({
@@ -578,6 +584,12 @@ export class ContractRuntime extends Logger {
                 deployResponse.data,
             );
         } catch (e) {
+            if (this.logUnexpectedErrors) {
+                this.warn(
+                    `(debug) deployContractAtAddress failed with error: ${(e as Error).message}`,
+                );
+            }
+
             return this.buildDeployFromAddressResponse(
                 Address.zero(),
                 0,
@@ -737,6 +749,10 @@ export class ContractRuntime extends Logger {
                 callResponse.response,
             );
         } catch (e) {
+            if (this.logUnexpectedErrors) {
+                this.warn(`(debug) call failed with error: ${(e as Error).message}`);
+            }
+
             return this.buildCallResponse(false, 0n, 1, this.getErrorAsBuffer(e as Error));
         }
     }

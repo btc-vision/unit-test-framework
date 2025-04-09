@@ -43,8 +43,23 @@ export class OPNetUnit extends Logger {
 
         // Wrap the test function to include hooks
         const wrappedFn = async () => {
-            await this.runBeforeEach();
-            await fn();
+            const start = Date.now();
+
+            try {
+                await this.runBeforeEach();
+                await fn();
+            } finally {
+                try {
+                    await this.runAfterEach();
+                } catch (e) {
+                    const pink = this.chalk.hex('#e56ee5');
+
+                    this.error(
+                        `❌ AfterEach failed ${pink(`(${Date.now() - start}ms)`)}: ${testName}`,
+                    );
+                    this.panic(((await e) as Error).stack as string);
+                }
+            }
         };
 
         // Register the test
@@ -78,13 +93,6 @@ export class OPNetUnit extends Logger {
         } catch (e) {
             this.error(`❌ Test failed ${pink(`(${Date.now() - start}ms)`)}: ${testName}`);
             this.panic(((await e) as Error).stack as string);
-        } finally {
-            try {
-                await this.runAfterEach();
-            } catch (e) {
-                this.error(`❌ AfterEach failed ${pink(`(${Date.now() - start}ms)`)}: ${testName}`);
-                this.panic(((await e) as Error).stack as string);
-            }
         }
     }
 }
@@ -94,10 +102,10 @@ export async function opnet(suiteName: string, fn: (vm: OPNetUnit) => Promise<vo
 
     try {
         await fn(vm);
-
-        if (vm.runAfterAll) await vm.runAfterAll();
     } catch (e) {
         vm.error(`❌ Suite failed: ${suiteName}`);
         vm.panic(((await e) as Error).stack as string);
+    } finally {
+        if (vm.runAfterAll) await vm.runAfterAll();
     }
 }

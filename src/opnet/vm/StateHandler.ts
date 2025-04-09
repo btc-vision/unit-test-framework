@@ -109,9 +109,10 @@ class InternalStateHandler {
         const state = this.states.get(contract);
         if (state) {
             state.clear();
-        } else {
-            this.states.set(contract, new FastBigIntMap());
         }
+
+        this.states.delete(contract);
+        this.deployed.delete(contract);
     }
 
     public purgeAll(): void {
