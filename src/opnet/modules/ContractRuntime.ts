@@ -340,6 +340,8 @@ export class ContractRuntime extends Logger {
             if (response.status === 0 && !response.error) {
                 // Only save states if the execution was successful and the user allow it
                 if (executionParameters.saveStates !== false) {
+                    this.gasUsed = this.calculateGasCostSave(response);
+
                     StateHandler.pushAllTempStatesToGlobal();
                 }
             }
@@ -397,7 +399,7 @@ export class ContractRuntime extends Logger {
                 throw new Error(`OP_NET: gas used mismatch ${response.gasUsed} != ${gasUsed}`);
             }
 
-            this.gasUsed = this.calculateGasCostSave(response.gasUsed);
+            this.gasUsed = response.gasUsed;
         }
 
         // Fatal error in rust
@@ -410,7 +412,7 @@ export class ContractRuntime extends Logger {
                 `OP_NET: Maximum receipt length exceeded. (${response.data.length} > ${CONSENSUS.TRANSACTIONS.MAXIMUM_RECEIPT_LENGTH})`,
             );
         }
-
+        
         return new CallResponse({
             exitData: {
                 ...response,
@@ -423,25 +425,33 @@ export class ContractRuntime extends Logger {
         });
     }
 
-    protected calculateGasCostSave(gasCost: bigint): bigint {
-        const states = StateHandler.getTemporaryStates(this.address);
+    protected calculateGasCostSave(response: CallResponse): bigint {
+        if (response.usedGas !== this.gasUsed) {
+            throw new Error('OP_NET: gas used mismatch');
+        }
 
         let cost: bigint = 0n;
-        for (const [key, value] of states) {
-            const currentValue = StateHandler.globalLoad(this.address, key);
+        for (const contract of this.callStack) {
+            const states = StateHandler.getTemporaryStates(contract);
 
-            if (currentValue === undefined) {
-                cost += NEW_STORAGE_SLOT_GAS_COST;
-            } else if (currentValue !== value) {
-                cost += UPDATED_STORAGE_SLOT_GAS_COST;
-            }
+            for (const [key, value] of states) {
+                const currentValue = StateHandler.globalLoad(contract, key);
 
-            if (this.gasMax < gasCost + cost) {
-                throw new Error('out of gas while saving state');
+                if (currentValue === undefined) {
+                    cost += NEW_STORAGE_SLOT_GAS_COST;
+                } else if (currentValue !== value) {
+                    cost += UPDATED_STORAGE_SLOT_GAS_COST;
+                }
+
+                if (this.gasMax < this.gasUsed + cost) {
+                    throw new Error('out of gas while saving state');
+                }
             }
         }
 
-        return gasCost + cost;
+        response.usedGas = this.gasUsed + cost;
+
+        return response.usedGas;
     }
 
     protected handleError(error: Error): Error {
@@ -513,6 +523,7 @@ export class ContractRuntime extends Logger {
 
             const address: Address = reader.readAddress();
             const salt: Buffer = Buffer.from(reader.readBytes(32));
+            const calldata: Buffer = Buffer.from(reader.readBytes(reader.bytesLeft()));
 
             if (Blockchain.traceDeployments) {
                 const saltBig = BigInt(
@@ -533,6 +544,7 @@ export class ContractRuntime extends Logger {
                 return response.getBuffer();
             }
 
+            const gasBefore = this.gasUsed;
             const requestedContractBytecode = BytecodeManager.getBytecode(address) as Buffer;
             const newContract: ContractRuntime = new ContractRuntime({
                 address: deployedContractAddress,
@@ -540,6 +552,7 @@ export class ContractRuntime extends Logger {
                 gasLimit: this.gasMax,
                 gasUsed: this.gasUsed,
                 bytecode: requestedContractBytecode,
+                deploymentCalldata: calldata,
             });
 
             if (Blockchain.traceDeployments) {
@@ -582,12 +595,13 @@ export class ContractRuntime extends Logger {
             this.mergeStates(newContract);
             this.checkReentrancy();
 
+            const used = deployResponse.gasUsed - gasBefore;
             this.gasUsed = deployResponse.gasUsed;
 
             return this.buildDeployFromAddressResponse(
                 deployedContractAddress,
                 requestedContractBytecode.byteLength,
-                deployResponse.gasUsed,
+                used,
                 deployResponse.status as 0 | 1,
                 deployResponse.data,
             );
@@ -687,9 +701,14 @@ export class ContractRuntime extends Logger {
             throw new Error('Contract not initialized');
         }
 
+        let gasUsed: bigint = this.gasUsed;
         try {
             const reader = new BinaryReader(data);
-            const gasUsed: bigint = reader.readU64();
+
+            // Update gas used
+            gasUsed = reader.readU64();
+            this.gasUsed = gasUsed;
+
             const memoryPagesUsed: bigint = BigInt(reader.readU32());
             const contractAddress: Address = reader.readAddress();
             const calldata: Uint8Array = reader.readBytesWithLength();
@@ -700,15 +719,15 @@ export class ContractRuntime extends Logger {
                 );
             }
 
-            const contract: ContractRuntime = Blockchain.getContract(contractAddress);
-            const isAddressWarm = this.touchedAddresses.has(contractAddress);
-
             this.callStack.push(contractAddress);
             this.touchedAddresses.add(contractAddress);
 
             if (this.verifyCallStackDepth()) {
                 throw new Error(`OP_NET: CALL_STACK DEPTH EXCEEDED`);
             }
+
+            const contract: ContractRuntime = Blockchain.getContract(contractAddress);
+            const isAddressWarm = this.touchedAddresses.has(contractAddress);
 
             const ca = new ContractRuntime({
                 address: contractAddress,
@@ -742,6 +761,8 @@ export class ContractRuntime extends Logger {
                 memoryPagesUsed,
             });
 
+            this.gasUsed = callResponse.usedGas;
+
             this.mergeStates(ca);
 
             try {
@@ -750,9 +771,10 @@ export class ContractRuntime extends Logger {
 
             this.checkReentrancy();
 
+            const gasDifference = this.gasUsed - gasUsed;
             return this.buildCallResponse(
                 isAddressWarm,
-                callResponse.usedGas,
+                gasDifference,
                 callResponse.status as 0 | 1,
                 callResponse.response,
             );
@@ -763,7 +785,8 @@ export class ContractRuntime extends Logger {
                 );
             }
 
-            return this.buildCallResponse(false, 0n, 1, this.getErrorAsBuffer(e as Error));
+            const difference = this.gasUsed - gasUsed;
+            return this.buildCallResponse(false, difference, 1, this.getErrorAsBuffer(e as Error));
         }
     }
 
