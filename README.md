@@ -255,22 +255,6 @@ await opnet('SimpleToken Contract', async (vm: OPNetUnit) => {
 });
 ```
 
-### Explanation
-
-- **SimpleToken Contract**: This contract implements a simple token with minting, transferring, and balance checking
-  functions.
-    - **mint**: Mints tokens to a specified address.
-    - **transfer**: Transfers tokens from one address to another.
-    - **balanceOf**: Returns the balance of a specified address.
-
-- **simpleTokenTest.ts**: This test suite covers the main functionality of the `SimpleToken` contract.
-    - **beforeEach**: Initializes a new instance of the `SimpleToken` contract before each test case.
-    - **afterEach**: Disposes of the contract instance after each test case.
-    - **Test Cases**:
-        - **should mint tokens correctly**: Tests that tokens are correctly minted to a given address.
-        - **should transfer tokens correctly**: Tests that tokens are correctly transferred from one address to another.
-        - **should return correct balances**: Tests that the balance checking function returns the expected results.
-
 ## Contributing
 
 Contributions are welcome! To contribute:
