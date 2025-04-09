@@ -473,6 +473,8 @@ export class ContractRuntime extends Logger {
     private async deployContractAtAddress(data: Buffer): Promise<Buffer | Uint8Array> {
         try {
             const reader = new BinaryReader(data);
+            this.gasUsed = reader.readU64();
+
             const address: Address = reader.readAddress();
             const salt: Buffer = Buffer.from(reader.readBytes(32));
 
@@ -500,6 +502,7 @@ export class ContractRuntime extends Logger {
                 address: deployedContractAddress,
                 deployer: this.address,
                 gasLimit: this.gasMax,
+                gasUsed: this.gasUsed,
                 bytecode: requestedContractBytecode,
             });
 
@@ -510,7 +513,6 @@ export class ContractRuntime extends Logger {
             }
 
             Blockchain.register(newContract);
-
             await newContract.init();
 
             if (Blockchain.traceDeployments) {
@@ -519,12 +521,30 @@ export class ContractRuntime extends Logger {
                 );
             }
 
+            const states: StateOverride = {
+                events: this.events,
+                callStack: this.callStack,
+                touchedAddresses: this.touchedAddresses,
+                touchedBlocks: this.touchedBlocks,
+                totalEventLength: this.totalEventLength,
+                storedPointers: this.storedPointers,
+                loadedPointers: this.loadedPointers,
+            };
+
+            // Apply states override
+            newContract.applyStatesOverride(states);
+
             const deployResponse = await newContract.deployContract(false);
             if (deployResponse === undefined) {
+                Blockchain.unregister(newContract);
+
                 throw new Error('OP_NET: Contract already deployed.');
             }
 
             this.deployedContracts.set(deployedContractAddress, this.bytecode);
+
+            this.mergeStates(newContract);
+            this.checkReentrancy();
 
             return this.buildDeployFromAddressResponse(
                 deployedContractAddress,

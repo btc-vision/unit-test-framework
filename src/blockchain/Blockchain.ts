@@ -145,6 +145,16 @@ class BlockchainBase extends Logger {
         this.contracts.set(contract.address, contract);
     }
 
+    public unregister(contract: ContractRuntime): void {
+        if (!this.contracts.has(contract.address)) {
+            throw new Error(
+                `Contract not registered at address ${contract.address.p2tr(this.network)}`,
+            );
+        }
+
+        this.contracts.delete(contract.address);
+    }
+
     public clearContracts(): void {
         StateHandler.purgeAll();
         this.contracts.clear();
