@@ -353,12 +353,14 @@ export class ContractRuntime extends Logger {
 
     protected async executeCall(executionParameters: ExecutionParameters): Promise<CallResponse> {
         // Deploy if not deployed.
-        const deployment = await this.deployContract();
+        const deployment = await this.deployContract(false);
         if (deployment) {
             if (deployment.status !== 0) {
-                throw new Error(
-                    `OP_NET: Cannot deploy contract. ${RustContract.decodeRevertData(deployment.data)}`,
-                );
+                if (this.logUnexpectedErrors) {
+                    this.warn(`Unexpected error during deployment.`);
+                }
+
+                throw RustContract.decodeRevertData(deployment.data);
             }
         }
 
@@ -439,7 +441,7 @@ export class ContractRuntime extends Logger {
     }
 
     protected handleError(error: Error): Error {
-        return new Error(`(in: ${this.address}) OP_NET: ${error.stack}`);
+        return new Error(`(in: ${this.constructor.name}) OP_NET: ${error}`);
     }
 
     protected defineRequiredBytecodes(): void {
@@ -575,6 +577,8 @@ export class ContractRuntime extends Logger {
 
             this.mergeStates(newContract);
             this.checkReentrancy();
+
+            this.gasUsed = deployResponse.gasUsed;
 
             return this.buildDeployFromAddressResponse(
                 deployedContractAddress,
