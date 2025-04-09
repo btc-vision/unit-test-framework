@@ -528,7 +528,6 @@ export class ContractRuntime extends Logger {
 
             const address: Address = reader.readAddress();
             const salt: Buffer = Buffer.from(reader.readBytes(32));
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
             const calldata: Buffer = Buffer.from(reader.readBytes(reader.bytesLeft() | 0));
 
             if (Blockchain.traceDeployments) {
