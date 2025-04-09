@@ -119,19 +119,13 @@ export class OP_20 extends ContractRuntime {
         calldata.writeU256(0n);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute({
+        const result = await this.executeThrowOnError({
             calldata: buf,
             sender: this.deployer,
             txOrigin: this.deployer,
         });
 
-        const response = result.response;
-        if (!response) {
-            this.dispose();
-            throw result.error;
-        }
-
-        const reader = new BinaryReader(response);
+        const reader = new BinaryReader(result.response);
         if (!reader.readBoolean()) {
             throw new Error('Mint failed');
         }
@@ -145,19 +139,13 @@ export class OP_20 extends ContractRuntime {
         calldata.writeU256(amount);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute({
+        const result = await this.executeThrowOnError({
             calldata: buf,
             sender: from,
             txOrigin: from,
         });
 
-        const response = result.response;
-        if (!response) {
-            this.dispose();
-            throw result.error;
-        }
-
-        const reader = new BinaryReader(response);
+        const reader = new BinaryReader(result.response);
         if (!reader.readBoolean()) {
             throw new Error('Transfer failed');
         }
@@ -170,18 +158,12 @@ export class OP_20 extends ContractRuntime {
         calldata.writeAddress(spender);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute({
+        const result = await this.executeThrowOnError({
             calldata: buf,
             saveStates: false,
         });
 
-        const response = result.response;
-        if (!response) {
-            this.dispose();
-            throw result.error;
-        }
-
-        const reader = new BinaryReader(response);
+        const reader = new BinaryReader(result.response);
         return reader.readU256();
     }
 
@@ -191,19 +173,11 @@ export class OP_20 extends ContractRuntime {
         calldata.writeAddressValueTuple(map);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute({
+        return await this.executeThrowOnError({
             calldata: buf,
             sender: this.deployer,
             txOrigin: this.deployer,
         });
-
-        const response = result.response;
-        if (!response) {
-            this.dispose();
-            throw result.error;
-        }
-
-        return result;
     }
 
     public async mintRaw(to: Address, amount: bigint): Promise<void> {
@@ -213,7 +187,7 @@ export class OP_20 extends ContractRuntime {
         calldata.writeU256(amount);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute({
+        const result = await this.executeThrowOnError({
             calldata: buf,
             sender: this.deployer,
             txOrigin: this.deployer,
@@ -238,19 +212,13 @@ export class OP_20 extends ContractRuntime {
         calldata.writeU256(amount);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute({
+        const result = await this.executeThrowOnError({
             calldata: buf,
             sender: owner,
             txOrigin: owner,
         });
 
-        const response = result.response;
-        if (!response) {
-            this.dispose();
-            throw result.error;
-        }
-
-        const reader = new BinaryReader(response);
+        const reader = new BinaryReader(result.response);
         if (!reader.readBoolean()) {
             throw new Error('Mint failed');
         }
@@ -265,19 +233,13 @@ export class OP_20 extends ContractRuntime {
         calldata.writeU256(amount);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute({
+        const result = await this.executeThrowOnError({
             calldata: buf,
             sender: from,
             txOrigin: from,
         });
 
-        const response = result.response;
-        if (!response) {
-            this.dispose();
-            throw result.error;
-        }
-
-        const reader = new BinaryReader(response);
+        const reader = new BinaryReader(result.response);
         if (!reader.readBoolean()) {
             throw new Error('Transfer failed');
         }
@@ -291,17 +253,12 @@ export class OP_20 extends ContractRuntime {
         calldata.writeAddress(owner);
 
         const buf = calldata.getBuffer();
-        const result = await this.execute({
+        const result = await this.executeThrowOnError({
             calldata: buf,
             saveStates: false,
         });
 
         const response = result.response;
-        if (result.error || !response) {
-            this.dispose();
-            throw this.handleError(result.error || new Error('No response'));
-        }
-
         const reader = new BinaryReader(response);
         return reader.readU256();
     }

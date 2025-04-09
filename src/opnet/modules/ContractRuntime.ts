@@ -462,6 +462,26 @@ export class ContractRuntime extends Logger {
         }
     }
 
+    /**
+     * Calls `this.execute()` with the provided arguments, returning the
+     * resulting `response` if the call is successful, throwing otherwise.
+     *
+     * @throws if contract execution reverts
+     *
+     * @returns Promise<CallResponse> the buffer returned by the contract
+     */
+    protected async executeThrowOnError(
+        executionParameters: ExecutionParameters,
+    ): Promise<CallResponse> {
+        const result = await this.execute(executionParameters);
+        if (result.error) {
+            const errorMessage = result.error ? result.error.message : 'Unknown error occurred';
+            throw new Error(errorMessage);
+        }
+
+        return result;
+    }
+
     private getGasUsed(): bigint {
         try {
             if (this._contract) {
