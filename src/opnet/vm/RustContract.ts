@@ -168,7 +168,7 @@ export class RustContract {
             const strErr = (deadlock as Error).message;
 
             if (strErr.includes('mutex')) {
-                throw new Error('OPNET: REENTRANCY DETECTED');
+                throw new Error('OP_NET: REENTRANCY DETECTED');
             }
         }
     }

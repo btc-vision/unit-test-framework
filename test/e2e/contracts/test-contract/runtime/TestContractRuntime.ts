@@ -167,7 +167,7 @@ export class TestContractRuntime extends ContractRuntime {
     }
 
     protected handleError(error: Error): Error {
-        return new Error(`(in test contract: ${this.address}) OPNET: ${error.message}`);
+        return new Error(`(in test contract: ${this.address}) OP_NET: ${error.message}`);
     }
 
     protected defineRequiredBytecodes(): void {

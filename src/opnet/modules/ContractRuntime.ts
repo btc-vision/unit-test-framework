@@ -12,6 +12,7 @@ import {
     AccountTypeResponse,
     BitcoinNetworkRequest,
     EnvironmentVariablesRequest,
+    ExitDataResponse,
     NEW_STORAGE_SLOT_GAS_COST,
     UPDATED_STORAGE_SLOT_GAS_COST,
 } from '@btc-vision/op-vm';
@@ -246,7 +247,7 @@ export class ContractRuntime extends Logger {
         return Promise.resolve();
     }
 
-    public async deployContract(pushStates: boolean = true): Promise<void> {
+    public async deployContract(pushStates: boolean = true): Promise<ExitDataResponse | undefined> {
         if (StateHandler.isDeployed(this.address)) {
             return;
         }
@@ -268,7 +269,11 @@ export class ContractRuntime extends Logger {
             }
 
             if (response?.status !== 0) {
-                throw new Error(`OPNET: Unable to deploy contract`);
+                if (response) {
+                    return response;
+                } else {
+                    throw new Error('OP_NET: Cannot deploy contract.');
+                }
             }
 
             StateHandler.setPendingDeployments(this.address);
@@ -277,6 +282,18 @@ export class ContractRuntime extends Logger {
             if (pushStates) {
                 StateHandler.pushAllTempStatesToGlobal();
             }
+
+            this.gasUsed = response.gasUsed;
+
+            return response;
+        } catch (e) {
+            const newResponse = this.handleError(e as Error);
+
+            return {
+                status: 1,
+                gasUsed: this.gasUsed,
+                data: Buffer.from(this.getErrorAsBuffer(newResponse)),
+            };
         } finally {
             this.dispose();
 
@@ -324,7 +341,14 @@ export class ContractRuntime extends Logger {
 
     protected async executeCall(executionParameters: ExecutionParameters): Promise<CallResponse> {
         // Deploy if not deployed.
-        await this.deployContract();
+        const deployment = await this.deployContract();
+        if (deployment) {
+            if (deployment.status !== 0) {
+                throw new Error(
+                    `OP_NET: Cannot deploy contract. ${RustContract.decodeRevertData(deployment.data)}`,
+                );
+            }
+        }
 
         this.gasUsed = executionParameters.gasUsed || 0n;
         this.memoryPagesUsed = executionParameters.memoryPagesUsed || 0n;
@@ -354,7 +378,7 @@ export class ContractRuntime extends Logger {
         } else {
             const gasUsed = this.getGasUsed();
             if (response.gasUsed !== gasUsed) {
-                throw new Error(`OPNET: gas used mismatch ${response.gasUsed} != ${gasUsed}`);
+                throw new Error(`OP_NET: gas used mismatch ${response.gasUsed} != ${gasUsed}`);
             }
 
             this.gasUsed = this.calculateGasCostSave(response.gasUsed);
@@ -367,7 +391,7 @@ export class ContractRuntime extends Logger {
 
         if (CONSENSUS.TRANSACTIONS.MAXIMUM_RECEIPT_LENGTH < response.data.length) {
             throw new Error(
-                `OPNET: MAXIMUM_RECEIPT_LENGTH EXCEEDED (${response.data.length} > ${CONSENSUS.TRANSACTIONS.MAXIMUM_RECEIPT_LENGTH})`,
+                `OP_NET: Maximum receipt length exceeded. (${response.data.length} > ${CONSENSUS.TRANSACTIONS.MAXIMUM_RECEIPT_LENGTH})`,
             );
         }
 
@@ -405,7 +429,7 @@ export class ContractRuntime extends Logger {
     }
 
     protected handleError(error: Error): Error {
-        return new Error(`(in: ${this.address}) OPNET: ${error.stack}`);
+        return new Error(`(in: ${this.address}) OP_NET: ${error.stack}`);
     }
 
     protected defineRequiredBytecodes(): void {
@@ -447,58 +471,94 @@ export class ContractRuntime extends Logger {
     }
 
     private async deployContractAtAddress(data: Buffer): Promise<Buffer | Uint8Array> {
-        const reader = new BinaryReader(data);
-        const address: Address = reader.readAddress();
-        const salt: Buffer = Buffer.from(reader.readBytes(32));
+        try {
+            const reader = new BinaryReader(data);
+            const address: Address = reader.readAddress();
+            const salt: Buffer = Buffer.from(reader.readBytes(32));
 
-        if (Blockchain.traceDeployments) {
-            const saltBig = BigInt(
-                '0x' + salt.reduce((acc, byte) => acc + byte.toString(16).padStart(2, '0'), ''),
+            if (Blockchain.traceDeployments) {
+                const saltBig = BigInt(
+                    '0x' + salt.reduce((acc, byte) => acc + byte.toString(16).padStart(2, '0'), ''),
+                );
+
+                this.log(
+                    `This contract wants to deploy the same bytecode as ${address}. Salt: ${salt.toString('hex')} or ${saltBig}`,
+                );
+            }
+
+            // TODO: Add deployment stack like in opnet-node
+
+            const deployedContractAddress = Blockchain.generateAddress(this.address, salt, address);
+            if (this.deployedContracts.has(deployedContractAddress)) {
+                const response = new BinaryWriter(32 + 4);
+
+                return response.getBuffer();
+            }
+
+            const requestedContractBytecode = BytecodeManager.getBytecode(address) as Buffer;
+            const newContract: ContractRuntime = new ContractRuntime({
+                address: deployedContractAddress,
+                deployer: this.address,
+                gasLimit: this.gasMax,
+                bytecode: requestedContractBytecode,
+            });
+
+            if (Blockchain.traceDeployments) {
+                this.info(
+                    `Deploying contract at ${deployedContractAddress.p2tr(Blockchain.network)}`,
+                );
+            }
+
+            Blockchain.register(newContract);
+
+            await newContract.init();
+
+            if (Blockchain.traceDeployments) {
+                this.log(
+                    `Deployed contract at ${deployedContractAddress.p2tr(Blockchain.network)}`,
+                );
+            }
+
+            const deployResponse = await newContract.deployContract(false);
+            if (deployResponse === undefined) {
+                throw new Error('OP_NET: Contract already deployed.');
+            }
+
+            this.deployedContracts.set(deployedContractAddress, this.bytecode);
+
+            return this.buildDeployFromAddressResponse(
+                deployedContractAddress,
+                requestedContractBytecode.byteLength,
+                deployResponse.gasUsed,
+                deployResponse.status as 0 | 1,
+                deployResponse.data,
             );
-
-            this.log(
-                `This contract wants to deploy the same bytecode as ${address}. Salt: ${salt.toString('hex')} or ${saltBig}`,
+        } catch (e) {
+            return this.buildDeployFromAddressResponse(
+                Address.zero(),
+                0,
+                this.gasUsed,
+                1,
+                this.getErrorAsBuffer(e as Error),
             );
         }
+    }
 
-        // TODO: Add deployment stack like in opnet-node
+    private buildDeployFromAddressResponse(
+        contractAddress: Address,
+        bytecodeLength: number,
+        usedGas: bigint,
+        status: 0 | 1,
+        response: Uint8Array,
+    ): Uint8Array {
+        const writer = new BinaryWriter();
+        writer.writeAddress(contractAddress);
+        writer.writeU32(bytecodeLength);
+        writer.writeU64(usedGas);
+        writer.writeU32(status);
+        writer.writeBytes(response);
 
-        const deployedContractAddress = Blockchain.generateAddress(this.address, salt, address);
-        if (this.deployedContracts.has(deployedContractAddress)) {
-            const response = new BinaryWriter(32 + 4);
-
-            return response.getBuffer();
-        }
-
-        const requestedContractBytecode = BytecodeManager.getBytecode(address) as Buffer;
-        const newContract: ContractRuntime = new ContractRuntime({
-            address: deployedContractAddress,
-            deployer: this.address,
-            gasLimit: this.gasMax,
-            bytecode: requestedContractBytecode,
-        });
-
-        if (Blockchain.traceDeployments) {
-            this.info(`Deploying contract at ${deployedContractAddress.p2tr(Blockchain.network)}`);
-        }
-
-        Blockchain.register(newContract);
-
-        await newContract.init();
-
-        if (Blockchain.traceDeployments) {
-            this.log(`Deployed contract at ${deployedContractAddress.p2tr(Blockchain.network)}`);
-        }
-
-        await newContract.deployContract(false);
-
-        this.deployedContracts.set(deployedContractAddress, this.bytecode);
-
-        const response = new BinaryWriter();
-        response.writeAddress(deployedContractAddress);
-        response.writeU32(requestedContractBytecode.byteLength);
-
-        return response.getBuffer();
+        return writer.getBuffer();
     }
 
     private load(data: Buffer): Buffer | Uint8Array {
@@ -554,7 +614,7 @@ export class ContractRuntime extends Logger {
         }
 
         if (this.callStack.includes(this.address)) {
-            throw new Error('OPNET: REENTRANCY DETECTED');
+            throw new Error('OP_NET: Reentrancy detected.');
         }
     }
 
@@ -583,7 +643,7 @@ export class ContractRuntime extends Logger {
             this.touchedAddresses.add(contractAddress);
 
             if (this.verifyCallStackDepth()) {
-                throw new Error(`OPNET: CALL_STACK DEPTH EXCEEDED`);
+                throw new Error(`OP_NET: CALL_STACK DEPTH EXCEEDED`);
             }
 
             const ca = new ContractRuntime({
@@ -701,19 +761,19 @@ export class ContractRuntime extends Logger {
         const reader = new BinaryReader(data);
         const eventNameLength = reader.readU16();
         if (CONSENSUS.TRANSACTIONS.EVENTS.MAXIMUM_EVENT_NAME_LENGTH < eventNameLength) {
-            throw new Error('OPNET: MAXIMUM_EVENT_NAME_LENGTH EXCEEDED');
+            throw new Error('OP_NET: Maximum event type length exceeded.');
         }
 
         const eventName = reader.readString(eventNameLength);
         const eventByteLength = reader.readU32();
         if (CONSENSUS.TRANSACTIONS.EVENTS.MAXIMUM_EVENT_LENGTH < eventByteLength) {
-            throw new Error('OPNET: MAXIMUM_EVENT_LENGTH EXCEEDED');
+            throw new Error('OP_NET: Maximum event length exceeded.');
         }
 
         this.totalEventLength += eventByteLength;
 
         if (CONSENSUS.TRANSACTIONS.EVENTS.MAXIMUM_TOTAL_EVENT_LENGTH < this.totalEventLength) {
-            throw new Error('OPNET: MAXIMUM_TOTAL_EVENT_LENGTH EXCEEDED');
+            throw new Error('OP_NET: Maximum total event length exceeded.');
         }
 
         const eventData = reader.readBytes(eventByteLength);
@@ -728,7 +788,7 @@ export class ContractRuntime extends Logger {
             return Promise.resolve(Buffer.alloc(1));
         } else {
             if (CONSENSUS.TRANSACTIONS.MAXIMUM_INPUTS < tx.inputs.length) {
-                throw new Error('OPNET: MAXIMUM_INPUTS EXCEEDED');
+                throw new Error('OP_NET: MAXIMUM_INPUTS EXCEEDED');
             }
 
             return Promise.resolve(Buffer.from(tx.serializeInputs()));
@@ -743,7 +803,7 @@ export class ContractRuntime extends Logger {
         } else {
             if (CONSENSUS.TRANSACTIONS.MAXIMUM_OUTPUTS < tx.outputs.length) {
                 throw new Error(
-                    `OPNET: MAXIMUM_OUTPUTS EXCEEDED ${CONSENSUS.TRANSACTIONS.MAXIMUM_OUTPUTS} < ${tx.outputs.length}`,
+                    `OP_NET: MAXIMUM_OUTPUTS EXCEEDED ${CONSENSUS.TRANSACTIONS.MAXIMUM_OUTPUTS} < ${tx.outputs.length}`,
                 );
             }
 

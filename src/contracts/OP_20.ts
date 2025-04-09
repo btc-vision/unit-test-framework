@@ -130,7 +130,7 @@ export class OP_20 extends ContractRuntime {
             this.dispose();
             throw result.error;
         }
-
+        
         const reader = new BinaryReader(response);
         if (!reader.readBoolean()) {
             throw new Error('Mint failed');
@@ -319,6 +319,6 @@ export class OP_20 extends ContractRuntime {
     }
 
     protected handleError(error: Error): Error {
-        return new Error(`(in op_20: ${this.address}) OPNET: ${error.stack}`);
+        return new Error(`(in op_20: ${this.address}) OP_NET: ${error.stack}`);
     }
 }

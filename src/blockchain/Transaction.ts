@@ -33,7 +33,7 @@ export class Transaction {
         const opnetInput = new TransactionInput(generateTransactionId(), 0, new Uint8Array(0));
         this.inputs = [opnetInput, ...inputs];
 
-        const opnetOutput = new TransactionOutput(0, 'OPNET', 0n);
+        const opnetOutput = new TransactionOutput(0, 'OP_NET', 0n);
         this.outputs = [opnetOutput, ...outputs];
     }
 
