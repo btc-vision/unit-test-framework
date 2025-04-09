@@ -223,13 +223,15 @@ export class ContractRuntime extends Logger {
                 exitData: {
                     status: 1,
                     gasUsed: this.getGasUsed(), // if we don't do gasMax here and the execution actually used some gas, the user is getting free gas on partial reverts, otherwise rust need to return the real used gas.
-                    data: Buffer.from(newResponse.message),
+                    data: Buffer.from(this.getErrorAsBuffer(newResponse)),
                 },
                 events: this.events,
                 callStack: this.callStack,
                 touchedAddresses: this.touchedAddresses,
                 touchedBlocks: this.touchedBlocks,
             });
+        } finally {
+            this.dispose();
         }
     }
 
@@ -322,21 +324,25 @@ export class ContractRuntime extends Logger {
     }
 
     protected async execute(executionParameters: ExecutionParameters): Promise<CallResponse> {
-        // Always make sure we don't have dirty states
-        this.resetInternalStates();
+        try {
+            // Always make sure we don't have dirty states
+            this.resetInternalStates();
 
-        const response = await this.executeCall(executionParameters);
-        if (response.status === 0 && !response.error) {
-            // Only save states if the execution was successful and the user allow it
-            if (executionParameters.saveStates !== false) {
-                StateHandler.pushAllTempStatesToGlobal();
+            const response = await this.executeCall(executionParameters);
+            if (response.status === 0 && !response.error) {
+                // Only save states if the execution was successful and the user allow it
+                if (executionParameters.saveStates !== false) {
+                    StateHandler.pushAllTempStatesToGlobal();
+                }
             }
+
+            // Reset internal states
+            this.resetInternalStates();
+
+            return response;
+        } finally {
+            this.dispose();
         }
-
-        // Reset internal states
-        this.resetInternalStates();
-
-        return response;
     }
 
     protected async executeCall(executionParameters: ExecutionParameters): Promise<CallResponse> {
@@ -367,8 +373,6 @@ export class ContractRuntime extends Logger {
 
                 return undefined;
             });
-
-        this.dispose();
 
         // Restore states
         if (error || response?.status !== 0) {
