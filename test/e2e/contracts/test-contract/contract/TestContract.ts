@@ -68,7 +68,7 @@ export class TestContract extends OP_NET {
         const key = calldata.readBytes(32);
         const value = calldata.readBytes(32);
 
-        Blockchain.setTransientAt(key, value)
+        Blockchain.setTransientStorageAt(key, value)
         const result = new BytesWriter(32)
         result.writeBytes(value)
         return result
@@ -79,7 +79,7 @@ export class TestContract extends OP_NET {
     public tLoad(calldata: Calldata): BytesWriter {
         const key = calldata.readBytes(32);
 
-        const value = Blockchain.getTransientAt(key)
+        const value = Blockchain.getTransientStorageAt(key)
         const result = new BytesWriter(32)
         result.writeBytes(value)
         return result
