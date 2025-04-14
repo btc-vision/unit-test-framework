@@ -219,7 +219,7 @@ export class RustContract {
 
         try {
             this.dispose();
-        } catch { }
+        } catch {}
 
         if (revertData.length === 0) {
             return new Error(`Execution reverted`);

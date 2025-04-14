@@ -52,55 +52,49 @@ await opnet('Storage tests', async (vm: OPNetUnit) => {
         },
     );
 
-    await vm.it('Store and load the same data', async () => {
-        const fakeCallerAddress: Address = Blockchain.generateRandomAddress();
-        Blockchain.txOrigin = fakeCallerAddress;
-        Blockchain.msgSender = fakeCallerAddress;
+    await vm.it('should store and load the same data', async () => {
+        const data = Uint8Array.from([
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+        ]);
 
-        const data = Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
-
-
-        const storeResult = await contract.storeCall(data, data);
+        await contract.storeCall(data, data);
         const loadResult = await contract.loadCall(data);
+
         Assert.expect(areBytesEqual(data, loadResult)).toEqual(true);
     });
 
-    await vm.it('Load of empty data', async () => {
-        const fakeCallerAddress: Address = Blockchain.generateRandomAddress();
-        Blockchain.txOrigin = fakeCallerAddress;
-        Blockchain.msgSender = fakeCallerAddress;
-
-        const empty = Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-
+    await vm.it('should load empty data', async () => {
+        const empty = Uint8Array.from([
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ]);
 
         const loadResult = await contract.loadCall(empty);
+
         Assert.expect(areBytesEqual(empty, loadResult)).toEqual(true);
     });
 
-    /*
-    await vm.it('tStore and tLoad the same data', async () => {
-        const fakeCallerAddress: Address = Blockchain.generateRandomAddress();
-        Blockchain.txOrigin = fakeCallerAddress;
-        Blockchain.msgSender = fakeCallerAddress;
+    // await vm.it('should store and load the same data in transient storage', async () => {
+    //     const data = Uint8Array.from([
+    //         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+    //         24, 25, 26, 27, 28, 29, 30, 31,
+    //     ]);
+    //
+    //     await contract.tStoreCall(data, data);
+    //     const loadResult = await contract.tLoadCall(data);
+    //
+    //     Assert.expect(areBytesEqual(data, loadResult)).toEqual(true);
+    // });
 
-        const data = Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
-
-
-        const storeResult = await contract.tStoreCall(data, data);
-        const loadResult = await contract.tLoadCall(data);
-        Assert.expect(areBytesEqual(data, loadResult)).toEqual(true);
-    });
-    */
-
-    await vm.it('tLoad of empty data', async () => {
-        const fakeCallerAddress: Address = Blockchain.generateRandomAddress();
-        Blockchain.txOrigin = fakeCallerAddress;
-        Blockchain.msgSender = fakeCallerAddress;
-
-        const empty = Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-
+    await vm.it('should load empty data from transient storage', async () => {
+        const empty = Uint8Array.from([
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ]);
 
         const loadResult = await contract.tLoadCall(empty);
+
         Assert.expect(areBytesEqual(empty, loadResult)).toEqual(true);
     });
 });

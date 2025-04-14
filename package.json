@@ -9,10 +9,11 @@
         "build:test-contract": "node scripts/buildTestContracts.js",
         "prepublish": "npm run build",
         "test": "npm-run-all build:test-contract test:*",
-        "test:memory": "tsx test/e2e/limits/Memory.test.ts",
-        "test:sha256": "tsx test/e2e/imports/Hashes.test.ts",
+        "test:blockchain": "tsx test/e2e/imports/Blockchain.ts",
         "test:call-depth": "tsx test/e2e/limits/CallDepth.test.ts",
         "test:gas": "tsx test/e2e/gas/Gas.test.ts",
+        "test:memory": "tsx test/e2e/limits/Memory.test.ts",
+        "test:sha256": "tsx test/e2e/imports/Hashes.test.ts",
         "test:storage": "tsx test/e2e/imports/Storage.test.ts"
     },
     "repository": {

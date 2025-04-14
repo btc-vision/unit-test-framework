@@ -7,14 +7,13 @@ import {
     BinaryWriter,
     NetEvent,
 } from '@btc-vision/transaction';
-
 import { Logger } from '@btc-vision/logger';
 import {
     AccountTypeResponse,
     BitcoinNetworkRequest,
+    BlockHashResponse,
     EnvironmentVariablesRequest,
     ExitDataResponse,
-    BlockHashResponse,
     NEW_STORAGE_SLOT_GAS_COST,
     UPDATED_STORAGE_SLOT_GAS_COST,
 } from '@btc-vision/op-vm';
@@ -480,7 +479,7 @@ export class ContractRuntime extends Logger {
             if (this._contract) {
                 try {
                     this._contract.dispose();
-                } catch { }
+                } catch {}
             }
 
             this.warn(`Rust panicked during instantiation: ${e}`);
@@ -797,7 +796,7 @@ export class ContractRuntime extends Logger {
 
             try {
                 ca.delete();
-            } catch { }
+            } catch {}
 
             this.checkReentrancy();
 

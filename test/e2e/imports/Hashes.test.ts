@@ -27,10 +27,7 @@ await opnet('Hash tests', async (vm: OPNetUnit) => {
         Blockchain.dispose();
     });
 
-    await vm.it('SHA256 should hash some data correctly', async () => {
-        const fakeCallerAddress: Address = Blockchain.generateRandomAddress();
-        Blockchain.txOrigin = fakeCallerAddress;
-        Blockchain.msgSender = fakeCallerAddress;
+    await vm.it('should hash some data correctly with SHA256', async () => {
         const dataToHash = Uint8Array.from([0x3d]);
         const expectedHash = Uint8Array.from([
             0x38, 0x09, 0x18, 0xb9, 0x46, 0xa5, 0x26, 0x64, 0x0a, 0x40, 0xdf, 0x5d, 0xce, 0xd6,
@@ -38,15 +35,12 @@ await opnet('Hash tests', async (vm: OPNetUnit) => {
             0x43, 0x9f, 0x31, 0xc3,
         ]);
 
-        const result = await contract.sha256(dataToHash);
+        const result = await contract.sha256Call(dataToHash);
 
         Assert.expect(areBytesEqual(result, expectedHash)).toEqual(true);
     });
 
-    await vm.it('SHA256 should hash empty data correctly', async () => {
-        const fakeCallerAddress: Address = Blockchain.generateRandomAddress();
-        Blockchain.txOrigin = fakeCallerAddress;
-        Blockchain.msgSender = fakeCallerAddress;
+    await vm.it('should hash empty data correctly with SHA256', async () => {
         const dataToHash = Uint8Array.from([]);
         const expectedHash = Uint8Array.from([
             0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f,
@@ -54,15 +48,12 @@ await opnet('Hash tests', async (vm: OPNetUnit) => {
             0x78, 0x52, 0xb8, 0x55,
         ]);
 
-        const result = await contract.sha256(dataToHash);
+        const result = await contract.sha256Call(dataToHash);
 
         Assert.expect(areBytesEqual(result, expectedHash)).toEqual(true);
     });
 
-    await vm.it('Ripemd160 should hash some data correctly', async () => {
-        const fakeCallerAddress: Address = Blockchain.generateRandomAddress();
-        Blockchain.txOrigin = fakeCallerAddress;
-        Blockchain.msgSender = fakeCallerAddress;
+    await vm.it('should hash some data correctly with RIPEMD160', async () => {
         const dataToHash = Uint8Array.from("hello world");
         const expectedHash = Uint8Array.from([
             48, 140, 183, 230, 243, 138,
@@ -72,13 +63,11 @@ await opnet('Hash tests', async (vm: OPNetUnit) => {
         ]);
 
         const result = await contract.ripemd160Call(dataToHash);
+
         Assert.expect(areBytesEqual(result, expectedHash)).toEqual(true);
     });
 
-    await vm.it('Ripemd160 should hash empty data correctly', async () => {
-        const fakeCallerAddress: Address = Blockchain.generateRandomAddress();
-        Blockchain.txOrigin = fakeCallerAddress;
-        Blockchain.msgSender = fakeCallerAddress;
+    await vm.it('should hash empty data correctly with RIPEMD160', async () => {
         const dataToHash = Uint8Array.from([]);
         const expectedHash = Uint8Array.from([
             156, 17, 133, 165, 197, 233,
@@ -88,6 +77,7 @@ await opnet('Hash tests', async (vm: OPNetUnit) => {
         ]);
 
         const result = await contract.ripemd160Call(dataToHash);
+
         Assert.expect(areBytesEqual(result, expectedHash)).toEqual(true);
     });
 });

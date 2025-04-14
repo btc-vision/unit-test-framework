@@ -1,8 +1,8 @@
-import { Address, BinaryReader } from '@btc-vision/transaction';
+import { Address } from '@btc-vision/transaction';
 import { Assert, Blockchain, opnet, OPNetUnit } from '../../../src';
-import { TestContractRuntime } from '../../test-contract/runtime/TestContractRuntime';
+import { TestContractRuntime } from '../contracts/test-contract/runtime/TestContractRuntime';
 
-await opnet('Hash tests', async (vm: OPNetUnit) => {
+await opnet('Blockchain tests', async (vm: OPNetUnit) => {
     let contract: TestContractRuntime;
 
     const deployerAddress: Address = Blockchain.generateRandomAddress();
@@ -26,54 +26,33 @@ await opnet('Hash tests', async (vm: OPNetUnit) => {
         Blockchain.dispose();
     });
 
-    await vm.it('Get account type contract', async () => {
-        const fakeCallerAddress: Address = Blockchain.generateRandomAddress();
-        Blockchain.txOrigin = fakeCallerAddress;
-        Blockchain.msgSender = fakeCallerAddress;
-        const result = await contract.accountTypeCall(contract.address);
+    await vm.it('should get the correct account type for a contract', async () => {
+        const targetAddress = contract.address;
+        const expectedType = 1;
 
-        Assert.expect(result).toEqual(1);
+        const result = await contract.accountTypeCall(targetAddress);
+
+        Assert.expect(result).toEqual(expectedType);
     });
 
-    await vm.it('Get account type address', async () => {
-        const fakeCallerAddress: Address = Blockchain.generateRandomAddress();
-        Blockchain.txOrigin = fakeCallerAddress;
-        Blockchain.msgSender = fakeCallerAddress;
-        const result = await contract.accountTypeCall(Blockchain.generateRandomAddress());
+    await vm.it('should get the correct account type for an empty account', async () => {
+        const targetAddress = Blockchain.generateRandomAddress();
+        const expectedType = 0;
 
-        Assert.expect(result).toEqual(0);
+        const result = await contract.accountTypeCall(targetAddress);
+
+        Assert.expect(result).toEqual(expectedType);
     });
 
-    await vm.it('Get block hash', async () => {
-        const fakeCallerAddress: Address = Blockchain.generateRandomAddress();
-        Blockchain.txOrigin = fakeCallerAddress;
-        Blockchain.msgSender = fakeCallerAddress;
+    await vm.it('should get the correct block hash for the current block', async () => {
+        const blockNumber = Blockchain.blockNumber;
         const expectedHash = Uint8Array.from([
             0x6b, 0x86, 0xb2, 0x73, 0xff, 0x34, 0xfc, 0xe1, 0x9d, 0x6b, 0x80, 0x4e, 0xff, 0x5a,
             0x3f, 0x57, 0x47, 0xad, 0xa4, 0xea, 0xa2, 0x2f, 0x1d, 0x49, 0xc0, 0x1e, 0x52, 0xdd,
             0xb7, 0x87, 0x5b, 0x4b,
         ]);
 
-        const result = await contract.blockHashCall(Blockchain.blockNumber);
-        const reader = new BinaryReader(result);
-        const receivedHash = reader.readBytes(32);
-
-        Assert.expect(areBytesEqual(receivedHash, expectedHash)).toEqual(true);
-    });
-
-    await vm.it('Get block hash - static', async () => {
-        const fakeCallerAddress: Address = Blockchain.generateRandomAddress();
-        Blockchain.txOrigin = fakeCallerAddress;
-        Blockchain.msgSender = fakeCallerAddress;
-        const expectedHash = Uint8Array.from([
-            0x6b, 0x86, 0xb2, 0x73, 0xff, 0x34, 0xfc, 0xe1, 0x9d, 0x6b, 0x80, 0x4e, 0xff, 0x5a,
-            0x3f, 0x57, 0x47, 0xad, 0xa4, 0xea, 0xa2, 0x2f, 0x1d, 0x49, 0xc0, 0x1e, 0x52, 0xdd,
-            0xb7, 0x87, 0x5b, 0x4b,
-        ]);
-
-        const result = await contract.blockHashCall(Blockchain.blockNumber);
-        const reader = new BinaryReader(result);
-        const receivedHash = reader.readBytes(32);
+        const receivedHash = await contract.blockHashCall(blockNumber);
 
         Assert.expect(areBytesEqual(receivedHash, expectedHash)).toEqual(true);
     });
