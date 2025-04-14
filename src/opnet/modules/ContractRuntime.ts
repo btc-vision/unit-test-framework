@@ -956,12 +956,22 @@ export class ContractRuntime extends Logger {
     }
 
     private getBlockHash(blockNumber: bigint): Promise<BlockHashResponse> {
-        const fakeBlockHash = crypto.createHash('sha256').update(blockNumber.toString()).digest();
-
         const isBlockWarm = this.touchedBlocks.has(blockNumber);
         if (!isBlockWarm) {
             this.touchedBlocks.add(blockNumber);
         }
+
+        if (blockNumber > Blockchain.blockNumber) {
+            return Promise.resolve({
+                blockHash: Buffer.from([
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0,
+                ]),
+                isBlockWarm,
+            });
+        }
+
+        const fakeBlockHash = crypto.createHash('sha256').update(blockNumber.toString()).digest();
 
         return Promise.resolve({
             blockHash: fakeBlockHash,

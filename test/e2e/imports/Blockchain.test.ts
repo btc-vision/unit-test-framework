@@ -56,6 +56,18 @@ await opnet('Blockchain tests', async (vm: OPNetUnit) => {
 
         Assert.expect(areBytesEqual(receivedHash, expectedHash)).toEqual(true);
     });
+
+    await vm.it('should return empty value when getting the block hash of a future block', async () => {
+        const blockNumber = Blockchain.blockNumber + 1n;
+        const expectedHash = Buffer.from([
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+        ]);
+
+        const receivedHash = await contract.blockHashCall(blockNumber);
+
+        Assert.expect(areBytesEqual(receivedHash, expectedHash)).toEqual(true);
+    });
 });
 
 function areBytesEqual(arr1: Uint8Array, arr2: Uint8Array): boolean {
