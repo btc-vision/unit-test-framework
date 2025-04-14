@@ -11,6 +11,7 @@ import { Logger } from '@btc-vision/logger';
 import {
     AccountTypeResponse,
     BitcoinNetworkRequest,
+    BlockHashResponse,
     EnvironmentVariablesRequest,
     ExitDataResponse,
     NEW_STORAGE_SLOT_GAS_COST,
@@ -19,7 +20,7 @@ import {
 import bitcoin from '@btc-vision/bitcoin';
 import crypto from 'crypto';
 import { Blockchain } from '../../blockchain/Blockchain.js';
-import { CONSENSUS } from '../../contracts/configs.js';
+import { CONSENSUS } from '../../contracts/configs';
 import { CallResponse } from '../interfaces/CallResponse.js';
 import { ContractDetails, StateOverride } from '../interfaces/ContractDetails.js';
 import { ContractParameters, RustContract } from '../vm/RustContract.js';
@@ -41,6 +42,9 @@ export class ContractRuntime extends Logger {
     // global states
     public address: Address;
     public readonly deployer: Address;
+    protected transient: FastBigIntMap = new FastBigIntMap();
+    protected states: FastBigIntMap = new FastBigIntMap();
+    protected deploymentStates: FastBigIntMap = new FastBigIntMap();
 
     // internal states
     protected events: NetEvent[] = [];
@@ -523,7 +527,7 @@ export class ContractRuntime extends Logger {
 
             const address: Address = reader.readAddress();
             const salt: Buffer = Buffer.from(reader.readBytes(32));
-            const calldata: Buffer = Buffer.from(reader.readBytes(reader.bytesLeft()));
+            const calldata: Buffer = Buffer.from(reader.readBytes(reader.bytesLeft() | 0));
 
             if (Blockchain.traceDeployments) {
                 const saltBig = BigInt(
@@ -662,6 +666,18 @@ export class ContractRuntime extends Logger {
         return response.getBuffer();
     }
 
+    private tLoad(data: Buffer): Buffer | Uint8Array {
+        const reader = new BinaryReader(data);
+        const pointer = reader.readU256();
+        const value = this.transient.get(pointer);
+
+        const response: BinaryWriter = new BinaryWriter();
+        response.writeU256(value || 0n);
+        response.writeBoolean(value !== undefined);
+
+        return response.getBuffer();
+    }
+
     private store(data: Buffer): Buffer | Uint8Array {
         const reader = new BinaryReader(data);
         const pointer: bigint = reader.readU256();
@@ -682,6 +698,19 @@ export class ContractRuntime extends Logger {
 
         const response: BinaryWriter = new BinaryWriter();
         response.writeBoolean(isSlotWarm);
+
+        return response.getBuffer();
+    }
+
+    private tStore(data: Buffer): Buffer | Uint8Array {
+        const reader = new BinaryReader(data);
+        const pointer: bigint = reader.readU256();
+        const value: bigint = reader.readU256();
+
+        this.transient.set(pointer, value);
+
+        const response: BinaryWriter = new BinaryWriter();
+        response.writeBoolean(true);
 
         return response.getBuffer();
     }
@@ -926,9 +955,18 @@ export class ContractRuntime extends Logger {
         });
     }
 
-    private getBlockHash(blockNumber: bigint): Promise<Buffer> {
+    private getBlockHash(blockNumber: bigint): Promise<BlockHashResponse> {
         const fakeBlockHash = crypto.createHash('sha256').update(blockNumber.toString()).digest();
-        return Promise.resolve(fakeBlockHash);
+
+        const isBlockWarm = this.touchedBlocks.has(blockNumber);
+        if (!isBlockWarm) {
+            this.touchedBlocks.add(blockNumber);
+        }
+
+        return Promise.resolve({
+            blockHash: fakeBlockHash,
+            isBlockWarm,
+        });
     }
 
     private fakeLoad(): void {
@@ -966,6 +1004,26 @@ export class ContractRuntime extends Logger {
                         resolve(this.store(data));
                     } else {
                         resolve(this.store(data));
+                    }
+                });
+            },
+            tLoad: (data: Buffer) => {
+                return new Promise((resolve) => {
+                    if (Blockchain.simulateRealEnvironment) {
+                        this.fakeLoad();
+                        resolve(this.tLoad(data));
+                    } else {
+                        resolve(this.tLoad(data));
+                    }
+                });
+            },
+            tStore: (data: Buffer) => {
+                return new Promise((resolve) => {
+                    if (Blockchain.simulateRealEnvironment) {
+                        this.fakeLoad();
+                        resolve(this.tStore(data));
+                    } else {
+                        resolve(this.tStore(data));
                     }
                 });
             },

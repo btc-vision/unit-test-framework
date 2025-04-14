@@ -4,6 +4,7 @@ import {
     AccountTypeResponse,
     BlockHashRequest,
     ContractManager,
+    BlockHashResponse,
     ThreadSafeJsImportResponse,
 } from '@btc-vision/op-vm';
 import bitcoin, { Network } from '@btc-vision/bitcoin';
@@ -461,10 +462,10 @@ class BlockchainBase extends Logger {
     private blockHashJSFunction: (
         _: never,
         result: BlockHashRequest,
-    ) => Promise<Buffer | Uint8Array> = (
+    ) => Promise<BlockHashResponse> = (
         _: never,
         value: BlockHashRequest,
-    ): Promise<Buffer | Uint8Array> => {
+    ): Promise<BlockHashResponse> => {
         if (this.enableDebug) console.log('BLOCK HASH', value.blockNumber);
 
         const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.

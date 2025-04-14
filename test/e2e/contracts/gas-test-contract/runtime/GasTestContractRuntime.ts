@@ -1,4 +1,4 @@
-import { Address, BinaryWriter } from '@btc-vision/transaction';
+import { Address, BinaryWriter, BinaryReader } from '@btc-vision/transaction';
 import { BytecodeManager, CallResponse, ContractRuntime } from '../../../../../src';
 
 export class GasTestContractRuntime extends ContractRuntime {
@@ -20,8 +20,14 @@ export class GasTestContractRuntime extends ContractRuntime {
         });
 
         this.handleResponse(response);
-
         return response;
+    }
+
+    private handleResponse(response: CallResponse): void {
+        if (response.error) throw this.handleError(response.error);
+        if (!response.response) {
+            throw new Error('No response to decode');
+        }
     }
 
     protected handleError(error: Error): Error {
@@ -33,12 +39,5 @@ export class GasTestContractRuntime extends ContractRuntime {
             './test/e2e/contracts/gas-test-contract/contract/build/GasTestContract.wasm',
             this.address,
         );
-    }
-
-    private handleResponse(response: CallResponse): void {
-        if (response.error) throw this.handleError(response.error);
-        if (!response.response) {
-            throw new Error('No response to decode');
-        }
     }
 }

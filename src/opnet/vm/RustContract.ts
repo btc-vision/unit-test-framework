@@ -47,6 +47,8 @@ export class RustContract {
                 id: this._id,
                 load: this.params.load,
                 store: this.params.store,
+                tLoad: this.params.tLoad,
+                tStore: this.params.tStore,
                 call: this.params.call,
                 deployContractAtAddress: this.params.deployContractAtAddress,
                 log: this.params.log,
