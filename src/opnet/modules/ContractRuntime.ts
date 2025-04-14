@@ -752,7 +752,7 @@ export class ContractRuntime extends Logger {
             this.touchedAddresses.add(contractAddress);
 
             if (this.verifyCallStackDepth()) {
-                throw new Error(`OP_NET: CALL_STACK DEPTH EXCEEDED`);
+                throw new Error(`OP_NET: Maximum call depth exceeded`);
             }
 
             const contract: ContractRuntime = Blockchain.getContract(contractAddress);
