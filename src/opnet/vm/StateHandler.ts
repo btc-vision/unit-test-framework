@@ -20,6 +20,19 @@ class InternalStateHandler {
         this.deployed.set(contract, true);
     }
 
+    public getStates(contract: Address): FastBigIntMap {
+        const state = this.states.get(contract);
+        if (state) {
+            return state;
+        }
+
+        // If no state exists, create a new one
+        const newState = new FastBigIntMap();
+        this.states.set(contract, newState);
+
+        return newState;
+    }
+
     public isDeployed(contract: Address): boolean {
         const state = this.pendingDeployments.get(contract) || this.deployed.get(contract);
         if (state) {
