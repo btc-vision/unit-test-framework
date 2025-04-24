@@ -7,6 +7,19 @@ class InternalStateHandler {
     protected deployed: AddressMap<boolean> = new AddressMap();
     protected pendingDeployments: AddressMap<boolean> = new AddressMap();
 
+    public overrideStates(contract: Address, states: FastBigIntMap): void {
+        const state = this.states.get(contract);
+        if (state) {
+            state.setAll(states);
+        } else {
+            this.states.set(contract, new FastBigIntMap(states));
+        }
+    }
+
+    public overrideDeployment(contract: Address): void {
+        this.deployed.set(contract, true);
+    }
+
     public isDeployed(contract: Address): boolean {
         const state = this.pendingDeployments.get(contract) || this.deployed.get(contract);
         if (state) {
