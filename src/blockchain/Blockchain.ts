@@ -3,8 +3,8 @@ import { Logger } from '@btc-vision/logger';
 import {
     AccountTypeResponse,
     BlockHashRequest,
-    ContractManager,
     BlockHashResponse,
+    ContractManager,
     ThreadSafeJsImportResponse,
 } from '@btc-vision/op-vm';
 import bitcoin, { Network } from '@btc-vision/bitcoin';
@@ -39,7 +39,7 @@ class BlockchainBase extends Logger {
         RustContractBinding
     >();
 
-    constructor(public readonly network: Network) {
+    constructor(public network: Network) {
         super();
     }
 
@@ -105,6 +105,10 @@ class BlockchainBase extends Logger {
 
     public set txOrigin(from: Address) {
         this._txOrigin = from;
+    }
+
+    public changeNetwork(network: Network): void {
+        this.network = network;
     }
 
     public createManager(): void {
