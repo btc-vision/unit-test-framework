@@ -8,6 +8,11 @@ await opnet('Gas tests', async (vm: OPNetUnit) => {
     const deployerAddress: Address = Blockchain.generateRandomAddress();
     const contractAddress: Address = Blockchain.generateRandomAddress();
 
+    Blockchain.traceGas = true;
+    Blockchain.traceDeployments = true;
+    Blockchain.traceCalls = true;
+    Blockchain.tracePointers = true;
+
     vm.beforeEach(async () => {
         Blockchain.dispose();
         Blockchain.clearContracts();

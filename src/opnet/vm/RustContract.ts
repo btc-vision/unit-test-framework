@@ -4,6 +4,7 @@ import {
     EnvironmentVariablesRequest,
     ExitDataResponse,
 } from '@btc-vision/op-vm';
+
 import { Blockchain } from '../../blockchain/Blockchain';
 import { RustContractBinding } from './RustContractBinding';
 
