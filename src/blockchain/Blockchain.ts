@@ -32,7 +32,7 @@ class BlockchainBase extends Logger {
     public traceDeployments: boolean = TRACE_DEPLOYMENTS;
     public simulateRealEnvironment: boolean = false;
 
-    private readonly enableDebug: boolean = false;
+    private readonly enableDebug: boolean = true;
     private readonly contracts: AddressMap<ContractRuntime> = new AddressMap<ContractRuntime>();
     private readonly bindings: Map<bigint, RustContractBinding> = new Map<
         bigint,
@@ -284,12 +284,12 @@ class BlockchainBase extends Logger {
     }
 
     private loadJsFunction: (
-        _: never,
+        //_: never,
         result: ThreadSafeJsImportResponse,
-    ) => Promise<Buffer | Uint8Array> = (
-        _: never,
+    ) => Promise<Buffer> = (
+        //_: never,
         value: ThreadSafeJsImportResponse,
-    ): Promise<Buffer | Uint8Array> => {
+    ): Promise<Buffer> => {
         if (this.enableDebug) console.log('LOAD', value.buffer);
 
         const u = new Uint8Array(value.buffer);
@@ -304,16 +304,16 @@ class BlockchainBase extends Logger {
     };
 
     private storeJSFunction: (
-        _: never,
+        //_: never,
         result: ThreadSafeJsImportResponse,
-    ) => Promise<Buffer | Uint8Array> = (
-        _: never,
+    ) => Promise<Buffer> = (
+        //_: never,
         value: ThreadSafeJsImportResponse,
-    ): Promise<Buffer | Uint8Array> => {
+    ): Promise<Buffer> => {
         if (this.enableDebug) console.log('STORE', value.buffer);
 
         const u = new Uint8Array(value.buffer);
-        const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
+        const buf: Buffer = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
 
         const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
 
@@ -325,12 +325,12 @@ class BlockchainBase extends Logger {
     };
 
     private callJSFunction: (
-        _: never,
+        //_: never,
         result: ThreadSafeJsImportResponse,
-    ) => Promise<Buffer | Uint8Array> = (
-        _: never,
+    ) => Promise<Buffer> = (
+        //_: never,
         value: ThreadSafeJsImportResponse,
-    ): Promise<Buffer | Uint8Array> => {
+    ): Promise<Buffer> => {
         if (this.enableDebug) console.log('CALL', value.buffer);
 
         const u = new Uint8Array(value.buffer);
@@ -346,12 +346,12 @@ class BlockchainBase extends Logger {
     };
 
     private deployContractAtAddressJSFunction: (
-        _: never,
+        //_: never,
         result: ThreadSafeJsImportResponse,
-    ) => Promise<Buffer | Uint8Array> = (
-        _: never,
+    ) => Promise<Buffer> = (
+        //_: never,
         value: ThreadSafeJsImportResponse,
-    ): Promise<Buffer | Uint8Array> => {
+    ): Promise<Buffer> => {
         if (this.enableDebug) console.log('DEPLOY', value.buffer);
 
         const u = new Uint8Array(value.buffer);
@@ -366,10 +366,13 @@ class BlockchainBase extends Logger {
         return c.deployContractAtAddress(buf);
     };
 
-    private logJSFunction: (_: never, result: ThreadSafeJsImportResponse) => Promise<void> = (
-        _: never,
+    private logJSFunction: (
+        //_: never,
+        result: ThreadSafeJsImportResponse,
+    ) => Promise<undefined> = (
+        //_: never,
         value: ThreadSafeJsImportResponse,
-    ): Promise<void> => {
+    ): Promise<undefined> => {
         return new Promise((resolve) => {
             // temporary
             const u = new Uint8Array(value.buffer);
@@ -383,15 +386,18 @@ class BlockchainBase extends Logger {
 
             c.log(buf);
 
-            resolve();
+            resolve(undefined);
         });
     };
 
-    private emitJSFunction: (_: never, result: ThreadSafeJsImportResponse) => Promise<void> = (
-        _: never,
+    private emitJSFunction: (
+        //_: never,
+        result: ThreadSafeJsImportResponse,
+    ) => Promise<undefined> = (
+        //_: never,
         value: ThreadSafeJsImportResponse,
-    ): Promise<void> => {
-        return new Promise<void>((resolve) => {
+    ): Promise<undefined> => {
+        return new Promise<undefined>((resolve) => {
             // temporary
             const u = new Uint8Array(value.buffer);
             const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
@@ -404,17 +410,17 @@ class BlockchainBase extends Logger {
 
             c.emit(buf);
 
-            resolve();
+            resolve(undefined);
         });
     };
 
     private inputsJSFunction: (
-        _: never,
+        //_: never,
         result: ThreadSafeJsImportResponse,
-    ) => Promise<Buffer | Uint8Array> = (
-        _: never,
+    ) => Promise<Buffer> = (
+        //_: never,
         value: ThreadSafeJsImportResponse,
-    ): Promise<Buffer | Uint8Array> => {
+    ): Promise<Buffer> => {
         if (this.enableDebug) console.log('INPUTS', value);
 
         const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
@@ -426,12 +432,12 @@ class BlockchainBase extends Logger {
     };
 
     private outputsJSFunction: (
-        _: never,
+        //_: never,
         result: ThreadSafeJsImportResponse,
-    ) => Promise<Buffer | Uint8Array> = (
-        _: never,
+    ) => Promise<Buffer> = (
+        //_: never,
         value: ThreadSafeJsImportResponse,
-    ): Promise<Buffer | Uint8Array> => {
+    ): Promise<Buffer> => {
         if (this.enableDebug) console.log('OUTPUT', value);
 
         const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
@@ -443,10 +449,10 @@ class BlockchainBase extends Logger {
     };
 
     private accountTypeJSFunction: (
-        _: never,
+        //_: never,
         result: ThreadSafeJsImportResponse,
     ) => Promise<AccountTypeResponse> = (
-        _: never,
+        //_: never,
         value: ThreadSafeJsImportResponse,
     ): Promise<AccountTypeResponse> => {
         if (this.enableDebug) console.log('ACCOUNT TYPE', value.buffer);
@@ -464,10 +470,10 @@ class BlockchainBase extends Logger {
     };
 
     private blockHashJSFunction: (
-        _: never,
+        //_: never,
         result: BlockHashRequest,
     ) => Promise<BlockHashResponse> = (
-        _: never,
+        //_: never,
         value: BlockHashRequest,
     ): Promise<BlockHashResponse> => {
         if (this.enableDebug) console.log('BLOCK HASH', value.blockNumber);

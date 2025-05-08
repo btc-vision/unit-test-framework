@@ -16,7 +16,7 @@ export const CONSENSUS: IConsensusRules<Consensus> = ConsensusMetadata[
 ] as IConsensusRules<Consensus>;
 
 // Trace flags
-export const TRACE_GAS: boolean = false;
-export const TRACE_POINTERS: boolean = false;
-export const TRACE_CALLS: boolean = false;
-export const TRACE_DEPLOYMENTS: boolean = false;
+export const TRACE_GAS: boolean = true;
+export const TRACE_POINTERS: boolean = true;
+export const TRACE_CALLS: boolean = true;
+export const TRACE_DEPLOYMENTS: boolean = true;
