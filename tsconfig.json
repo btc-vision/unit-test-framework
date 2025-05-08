@@ -45,5 +45,12 @@
         "src/*.cjs",
 		"test/**/*.ts",
 		"test/*.ts"
-	]
+	],
+    "exclude": [
+        "test/e2e/contracts/**/contract/*.ts",
+        "test/e2e/contracts/**/contract/**/*.ts",
+        "test/e2e/contracts/**/contract/abis/*.ts",
+        "test/e2e/contracts/**/contract/abis/**/*.ts",
+        "test/e2e/test-contract/contract/abis/*.ts"
+    ]
 }

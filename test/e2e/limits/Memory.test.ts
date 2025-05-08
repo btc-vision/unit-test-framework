@@ -26,29 +26,29 @@ await opnet('Memory tests', async (vm: OPNetUnit) => {
         Blockchain.dispose();
     });
 
-    vm.afterAll(async () => {
+    vm.afterAll(() => {
         contract.delete();
         Blockchain.dispose();
         Blockchain.cleanup();
     });
 
     await vm.it('should grow the memory to the maximum size', async () => {
-        let result = await contract.growMemory(511);
+        const result = await contract.growMemory(511);
         Assert.expect(result).toEqual(true);
     });
 
     await vm.it('should fail to grow the memory over the maximum size', async () => {
-        let result = await contract.growMemory(512);
+        const result = await contract.growMemory(512);
         Assert.expect(result).toEqual(false);
     });
 
     await vm.it('should grow the memory to the maximum size after a call', async () => {
-        let result = await contract.callThenGrowMemory(510);
+        const result = await contract.callThenGrowMemory(510);
         Assert.expect(result).toEqual(true);
     });
 
     await vm.it('should fail to grow the memory over the maximum size after a call', async () => {
-        let result = await contract.callThenGrowMemory(511);
+        const result = await contract.callThenGrowMemory(511);
         Assert.expect(result).toEqual(false);
     });
 
