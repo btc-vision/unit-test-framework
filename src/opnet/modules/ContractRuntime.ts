@@ -20,13 +20,13 @@ import {
 import bitcoin from '@btc-vision/bitcoin';
 import crypto from 'crypto';
 import { Blockchain } from '../../blockchain/Blockchain.js';
-import { CONSENSUS } from '../../contracts/configs';
+import { CONSENSUS } from '../../contracts/configs.js';
 import { CallResponse } from '../interfaces/CallResponse.js';
 import { ContractDetails, StateOverride } from '../interfaces/ContractDetails.js';
 import { ContractParameters, RustContract } from '../vm/RustContract.js';
 import { BytecodeManager } from './GetBytecode.js';
 import { FastBigIntMap } from './FastMap.js';
-import { AddressStack } from './AddressStack';
+import { AddressStack } from './AddressStack.js';
 import { StateHandler } from '../vm/StateHandler.js';
 import { ExecutionParameters } from '../interfaces/ExecuteParameters.js';
 
