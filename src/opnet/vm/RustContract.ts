@@ -5,8 +5,8 @@ import {
     ExitDataResponse,
 } from '@btc-vision/op-vm';
 
-import { Blockchain } from '../../blockchain/Blockchain';
-import { RustContractBinding } from './RustContractBinding';
+import { Blockchain } from '../../blockchain/Blockchain.js';
+import { RustContractBinding } from './RustContractBinding.js';
 
 export interface ContractParameters extends Omit<RustContractBinding, 'id'> {
     readonly address: string;
