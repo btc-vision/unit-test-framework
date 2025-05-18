@@ -77,8 +77,10 @@ function TEST_K(): void {
 }
 
 function TEST_L(): void {
-    let v = v128.splat<i8>(1);
-    while (true) v = v128.add<v128>(v, v);
+    let v = v128.splat<i8>(1);      // lane type = i8
+    while (true) {
+        v = v128.add<i8>(v, v);       // use the same lane type here
+    }
     blackhole(v);
 }
 
@@ -140,6 +142,33 @@ function fingerprint(iterations: i32): i64 {
     const h3 = reinterpret<i32>(f32x4.extract_lane(acc, 3));
 
     return ((h0 ^ h1) as i64) << 32 | (((h2 ^ h3) as i64) & 0xFFFF_FFFF);
+}
+
+@inline
+function spin(cb: () => void): void {
+    while (true) cb();
+}
+
+export function spin_fill0(): void {
+    const dst: usize = 0;
+    spin(() => memory.fill(dst, 0, 0));
+}
+
+function spin_copy0(): void {
+    spin(() => memory.copy(4, 0, 0));
+}
+
+const SEG: u32 = <u32>memory.data<u8>([
+    0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
+    0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
+]);
+
+function spin_init0(): void {
+    spin(() => memory.init(SEG, 0, 0, 0));
+}
+
+function spin_init256(): void {
+    spin(() => memory.init(SEG, 0, 0, 256));
 }
 
 @final
