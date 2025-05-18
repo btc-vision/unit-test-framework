@@ -17,6 +17,7 @@ export interface ContractParameters extends Omit<RustContractBinding, 'id'> {
     readonly memoryPagesUsed: bigint;
     readonly network: BitcoinNetworkRequest;
     readonly isDebugMode: boolean;
+    readonly returnProofs: boolean;
 
     readonly contractManager: ContractManager;
 }
@@ -138,6 +139,7 @@ export class RustContract {
             this.params.memoryPagesUsed,
             this.params.network,
             this.params.isDebugMode,
+            this.params.returnProofs,
         );
 
         this._instantiated = true;
