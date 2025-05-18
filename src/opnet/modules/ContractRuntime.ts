@@ -20,13 +20,13 @@ import {
 import bitcoin from '@btc-vision/bitcoin';
 import crypto from 'crypto';
 import { Blockchain } from '../../blockchain/Blockchain.js';
-import { CONSENSUS } from '../../contracts/configs';
+import { CONSENSUS } from '../../contracts/configs.js';
 import { CallResponse } from '../interfaces/CallResponse.js';
 import { ContractDetails, StateOverride } from '../interfaces/ContractDetails.js';
 import { ContractParameters, RustContract } from '../vm/RustContract.js';
 import { BytecodeManager } from './GetBytecode.js';
 import { FastBigIntMap } from './FastMap.js';
-import { AddressStack } from './AddressStack';
+import { AddressStack } from './AddressStack.js';
 import { StateHandler } from '../vm/StateHandler.js';
 import { ExecutionParameters } from '../interfaces/ExecuteParameters.js';
 
@@ -69,6 +69,7 @@ export class ContractRuntime extends Logger {
 
     // debug
     private readonly isDebugMode = true;
+    private readonly proofFeatureEnabled = false;
 
     protected constructor(details: ContractDetails) {
         super();
@@ -236,6 +237,7 @@ export class ContractRuntime extends Logger {
                     status: 1,
                     gasUsed: this.getGasUsed(), // if we don't do gasMax here and the execution actually used some gas, the user is getting free gas on partial reverts, otherwise rust need to return the real used gas.
                     data: Buffer.from(this.getErrorAsBuffer(newResponse)),
+                    proofs: []
                 },
                 events: this.events,
                 callStack: this.callStack,
@@ -307,6 +309,7 @@ export class ContractRuntime extends Logger {
                 status: 1,
                 gasUsed: this.gasUsed,
                 data: Buffer.from(this.getErrorAsBuffer(newResponse)),
+                proofs: []
             };
         } finally {
             this.dispose();
@@ -995,6 +998,7 @@ export class ContractRuntime extends Logger {
             memoryPagesUsed: this.memoryPagesUsed,
             network: this.getNetwork(),
             isDebugMode: this.isDebugMode,
+            returnProofs: this.proofFeatureEnabled,
             contractManager: Blockchain.contractManager,
             deployContractAtAddress: this.deployContractAtAddress.bind(this),
             load: (data: Buffer) => {

@@ -3,10 +3,13 @@ import {
     ContractManager,
     EnvironmentVariablesRequest,
     ExitDataResponse,
+    init,
 } from '@btc-vision/op-vm';
 
-import { Blockchain } from '../../blockchain/Blockchain';
-import { RustContractBinding } from './RustContractBinding';
+import { Blockchain } from '../../blockchain/Blockchain.js';
+import { RustContractBinding } from './RustContractBinding.js';
+
+init();
 
 export interface ContractParameters extends Omit<RustContractBinding, 'id'> {
     readonly address: string;
@@ -17,6 +20,7 @@ export interface ContractParameters extends Omit<RustContractBinding, 'id'> {
     readonly memoryPagesUsed: bigint;
     readonly network: BitcoinNetworkRequest;
     readonly isDebugMode: boolean;
+    readonly returnProofs: boolean;
 
     readonly contractManager: ContractManager;
 }
@@ -138,6 +142,7 @@ export class RustContract {
             this.params.memoryPagesUsed,
             this.params.network,
             this.params.isDebugMode,
+            this.params.returnProofs,
         );
 
         this._instantiated = true;
