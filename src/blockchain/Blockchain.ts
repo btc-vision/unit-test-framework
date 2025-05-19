@@ -283,14 +283,11 @@ class BlockchainBase extends Logger {
         return [price0, price1];
     }
 
-    private loadJsFunction: (
-        //_: never,
-        result: ThreadSafeJsImportResponse,
-    ) => Promise<Buffer> = (
-        //_: never,
+    private loadJsFunction: (err: Error, result: ThreadSafeJsImportResponse) => Promise<Buffer> = (
+        err: Error,
         value: ThreadSafeJsImportResponse,
     ): Promise<Buffer> => {
-        if (this.enableDebug) console.log('LOAD', value.buffer);
+        if (this.enableDebug) console.log('LOAD', value);
 
         const u = new Uint8Array(value.buffer);
         const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
@@ -303,14 +300,11 @@ class BlockchainBase extends Logger {
         return c.load(buf);
     };
 
-    private storeJSFunction: (
-        //_: never,
-        result: ThreadSafeJsImportResponse,
-    ) => Promise<Buffer> = (
-        //_: never,
+    private storeJSFunction: (err: Error, result: ThreadSafeJsImportResponse) => Promise<Buffer> = (
+        err: Error,
         value: ThreadSafeJsImportResponse,
     ): Promise<Buffer> => {
-        if (this.enableDebug) console.log('STORE', value.buffer);
+        if (this.enableDebug) console.log('STORE', value);
 
         const u = new Uint8Array(value.buffer);
         const buf: Buffer = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
@@ -324,14 +318,11 @@ class BlockchainBase extends Logger {
         return c.store(buf);
     };
 
-    private callJSFunction: (
-        //_: never,
-        result: ThreadSafeJsImportResponse,
-    ) => Promise<Buffer> = (
-        //_: never,
+    private callJSFunction: (err: Error, result: ThreadSafeJsImportResponse) => Promise<Buffer> = (
+        err: Error,
         value: ThreadSafeJsImportResponse,
     ): Promise<Buffer> => {
-        if (this.enableDebug) console.log('CALL', value.buffer);
+        if (this.enableDebug) console.log('CALL', value);
 
         const u = new Uint8Array(value.buffer);
         const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
@@ -346,13 +337,10 @@ class BlockchainBase extends Logger {
     };
 
     private deployContractAtAddressJSFunction: (
-        //_: never,
+        err: Error,
         result: ThreadSafeJsImportResponse,
-    ) => Promise<Buffer> = (
-        //_: never,
-        value: ThreadSafeJsImportResponse,
-    ): Promise<Buffer> => {
-        if (this.enableDebug) console.log('DEPLOY', value.buffer);
+    ) => Promise<Buffer> = (err: Error, value: ThreadSafeJsImportResponse): Promise<Buffer> => {
+        if (this.enableDebug) console.log('DEPLOY', value);
 
         const u = new Uint8Array(value.buffer);
         const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
@@ -366,96 +354,76 @@ class BlockchainBase extends Logger {
         return c.deployContractAtAddress(buf);
     };
 
-    private logJSFunction: (
-        //_: never,
-        result: ThreadSafeJsImportResponse,
-    ) => Promise<undefined> = (
-        //_: never,
-        value: ThreadSafeJsImportResponse,
-    ): Promise<undefined> => {
-        return new Promise((resolve) => {
-            // temporary
-            const u = new Uint8Array(value.buffer);
-            const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
+    private logJSFunction: (err: Error, result: ThreadSafeJsImportResponse) => Promise<undefined> =
+        (err: Error, value: ThreadSafeJsImportResponse): Promise<undefined> => {
+            return new Promise((resolve) => {
+                // temporary
+                const u = new Uint8Array(value.buffer);
+                const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
+
+                const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
+
+                if (!c) {
+                    throw new Error('Binding not found');
+                }
+
+                c.log(buf);
+
+                resolve(undefined);
+            });
+        };
+
+    private emitJSFunction: (err: Error, result: ThreadSafeJsImportResponse) => Promise<undefined> =
+        (err: Error, value: ThreadSafeJsImportResponse): Promise<undefined> => {
+            return new Promise<undefined>((resolve) => {
+                // temporary
+                const u = new Uint8Array(value.buffer);
+                const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
+
+                const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
+
+                if (!c) {
+                    throw new Error('Binding not found');
+                }
+
+                c.emit(buf);
+
+                resolve(undefined);
+            });
+        };
+
+    private inputsJSFunction: (err: Error, result: ThreadSafeJsImportResponse) => Promise<Buffer> =
+        (err: Error, value: ThreadSafeJsImportResponse): Promise<Buffer> => {
+            if (this.enableDebug) console.log('INPUTS', value);
 
             const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
-
             if (!c) {
                 throw new Error('Binding not found');
             }
 
-            c.log(buf);
+            return c.inputs();
+        };
 
-            resolve(undefined);
-        });
-    };
-
-    private emitJSFunction: (
-        //_: never,
-        result: ThreadSafeJsImportResponse,
-    ) => Promise<undefined> = (
-        //_: never,
-        value: ThreadSafeJsImportResponse,
-    ): Promise<undefined> => {
-        return new Promise<undefined>((resolve) => {
-            // temporary
-            const u = new Uint8Array(value.buffer);
-            const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
+    private outputsJSFunction: (err: Error, result: ThreadSafeJsImportResponse) => Promise<Buffer> =
+        (err: Error, value: ThreadSafeJsImportResponse): Promise<Buffer> => {
+            if (this.enableDebug) console.log('OUTPUT', value);
 
             const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
-
             if (!c) {
                 throw new Error('Binding not found');
             }
 
-            c.emit(buf);
-
-            resolve(undefined);
-        });
-    };
-
-    private inputsJSFunction: (
-        //_: never,
-        result: ThreadSafeJsImportResponse,
-    ) => Promise<Buffer> = (
-        //_: never,
-        value: ThreadSafeJsImportResponse,
-    ): Promise<Buffer> => {
-        if (this.enableDebug) console.log('INPUTS', value);
-
-        const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
-        if (!c) {
-            throw new Error('Binding not found');
-        }
-
-        return c.inputs();
-    };
-
-    private outputsJSFunction: (
-        //_: never,
-        result: ThreadSafeJsImportResponse,
-    ) => Promise<Buffer> = (
-        //_: never,
-        value: ThreadSafeJsImportResponse,
-    ): Promise<Buffer> => {
-        if (this.enableDebug) console.log('OUTPUT', value);
-
-        const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
-        if (!c) {
-            throw new Error('Binding not found');
-        }
-
-        return c.outputs();
-    };
+            return c.outputs();
+        };
 
     private accountTypeJSFunction: (
-        //_: never,
+        err: Error,
         result: ThreadSafeJsImportResponse,
     ) => Promise<AccountTypeResponse> = (
-        //_: never,
+        err: Error,
         value: ThreadSafeJsImportResponse,
     ): Promise<AccountTypeResponse> => {
-        if (this.enableDebug) console.log('ACCOUNT TYPE', value.buffer);
+        if (this.enableDebug) console.log('ACCOUNT TYPE', value);
 
         const u = new Uint8Array(value.buffer);
         const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
@@ -470,13 +438,13 @@ class BlockchainBase extends Logger {
     };
 
     private blockHashJSFunction: (
-        //_: never,
+        err: Error,
         result: BlockHashRequest,
     ) => Promise<BlockHashResponse> = (
-        //_: never,
+        err: Error,
         value: BlockHashRequest,
     ): Promise<BlockHashResponse> => {
-        if (this.enableDebug) console.log('BLOCK HASH', value.blockNumber);
+        if (this.enableDebug) console.log('BLOCK HASH', value);
 
         const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
 
