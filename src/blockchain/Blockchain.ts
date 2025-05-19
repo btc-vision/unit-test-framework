@@ -32,7 +32,7 @@ class BlockchainBase extends Logger {
     public traceDeployments: boolean = TRACE_DEPLOYMENTS;
     public simulateRealEnvironment: boolean = false;
 
-    private readonly enableDebug: boolean = true;
+    private readonly enableDebug: boolean = false;
     private readonly contracts: AddressMap<ContractRuntime> = new AddressMap<ContractRuntime>();
     private readonly bindings: Map<bigint, RustContractBinding> = new Map<
         bigint,
@@ -287,6 +287,7 @@ class BlockchainBase extends Logger {
         err: Error,
         value: ThreadSafeJsImportResponse,
     ): Promise<Buffer> => {
+        if (err) throw new Error(`Fatal error: ${err?.message}`);
         if (this.enableDebug) console.log('LOAD', value);
 
         const u = new Uint8Array(value.buffer);
@@ -304,6 +305,7 @@ class BlockchainBase extends Logger {
         err: Error,
         value: ThreadSafeJsImportResponse,
     ): Promise<Buffer> => {
+        if (err) throw new Error(`Fatal error: ${err?.message}`);
         if (this.enableDebug) console.log('STORE', value);
 
         const u = new Uint8Array(value.buffer);
@@ -322,6 +324,7 @@ class BlockchainBase extends Logger {
         err: Error,
         value: ThreadSafeJsImportResponse,
     ): Promise<Buffer> => {
+        if (err) throw new Error(`Fatal error: ${err?.message}`);
         if (this.enableDebug) console.log('CALL', value);
 
         const u = new Uint8Array(value.buffer);
@@ -340,6 +343,7 @@ class BlockchainBase extends Logger {
         err: Error,
         result: ThreadSafeJsImportResponse,
     ) => Promise<Buffer> = (err: Error, value: ThreadSafeJsImportResponse): Promise<Buffer> => {
+        if (err) throw new Error(`Fatal error: ${err?.message}`);
         if (this.enableDebug) console.log('DEPLOY', value);
 
         const u = new Uint8Array(value.buffer);
@@ -357,6 +361,7 @@ class BlockchainBase extends Logger {
     private logJSFunction: (err: Error, result: ThreadSafeJsImportResponse) => Promise<undefined> =
         (err: Error, value: ThreadSafeJsImportResponse): Promise<undefined> => {
             return new Promise((resolve) => {
+                if (err) throw new Error(`Fatal error: ${err?.message}`);
                 // temporary
                 const u = new Uint8Array(value.buffer);
                 const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
@@ -376,6 +381,7 @@ class BlockchainBase extends Logger {
     private emitJSFunction: (err: Error, result: ThreadSafeJsImportResponse) => Promise<undefined> =
         (err: Error, value: ThreadSafeJsImportResponse): Promise<undefined> => {
             return new Promise<undefined>((resolve) => {
+                if (err) throw new Error(`Fatal error: ${err?.message}`);
                 // temporary
                 const u = new Uint8Array(value.buffer);
                 const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
@@ -394,6 +400,7 @@ class BlockchainBase extends Logger {
 
     private inputsJSFunction: (err: Error, result: ThreadSafeJsImportResponse) => Promise<Buffer> =
         (err: Error, value: ThreadSafeJsImportResponse): Promise<Buffer> => {
+            if (err) throw new Error(`Fatal error: ${err?.message}`);
             if (this.enableDebug) console.log('INPUTS', value);
 
             const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
@@ -406,6 +413,7 @@ class BlockchainBase extends Logger {
 
     private outputsJSFunction: (err: Error, result: ThreadSafeJsImportResponse) => Promise<Buffer> =
         (err: Error, value: ThreadSafeJsImportResponse): Promise<Buffer> => {
+            if (err) throw new Error(`Fatal error: ${err?.message}`);
             if (this.enableDebug) console.log('OUTPUT', value);
 
             const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
@@ -423,6 +431,7 @@ class BlockchainBase extends Logger {
         err: Error,
         value: ThreadSafeJsImportResponse,
     ): Promise<AccountTypeResponse> => {
+        if (err) throw new Error(`Fatal error: ${err?.message}`);
         if (this.enableDebug) console.log('ACCOUNT TYPE', value);
 
         const u = new Uint8Array(value.buffer);
@@ -444,6 +453,7 @@ class BlockchainBase extends Logger {
         err: Error,
         value: BlockHashRequest,
     ): Promise<BlockHashResponse> => {
+        if (err) throw new Error(`Fatal error: ${err?.message}`);
         if (this.enableDebug) console.log('BLOCK HASH', value);
 
         const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.

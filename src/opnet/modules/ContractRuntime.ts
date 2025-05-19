@@ -237,7 +237,7 @@ export class ContractRuntime extends Logger {
                     status: 1,
                     gasUsed: this.getGasUsed(), // if we don't do gasMax here and the execution actually used some gas, the user is getting free gas on partial reverts, otherwise rust need to return the real used gas.
                     data: Buffer.from(this.getErrorAsBuffer(newResponse)),
-                    proofs: []
+                    proofs: [],
                 },
                 events: this.events,
                 callStack: this.callStack,
@@ -309,7 +309,7 @@ export class ContractRuntime extends Logger {
                 status: 1,
                 gasUsed: this.gasUsed,
                 data: Buffer.from(this.getErrorAsBuffer(newResponse)),
-                proofs: []
+                proofs: [],
             };
         } finally {
             this.dispose();
