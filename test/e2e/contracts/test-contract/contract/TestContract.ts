@@ -7,9 +7,14 @@ import {
     encodeSelector,
     OP_NET,
 } from '@btc-vision/btc-runtime/runtime';
-import { Atomics, callContract, getCallResult, ripemd160, sha256 } from '@btc-vision/btc-runtime/runtime/env/global';
+import {
+    callContract,
+    getCallResult,
+    ripemd160,
+    sha256,
+} from '@btc-vision/btc-runtime/runtime/env/global';
 
-
+/*
 // @ts-ignore
 @inline
 function blackhole<T>(_x: T): void {
@@ -170,6 +175,7 @@ function spin_init0(): void {
 function spin_init256(): void {
     spin(() => memory.init(SEG, 0, 0, 256));
 }
+*/
 
 @final
 export class TestContract extends OP_NET {
