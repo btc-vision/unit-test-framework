@@ -163,6 +163,7 @@ export class TestContractRuntime extends ContractRuntime {
         const response = await this.execute({
             calldata: calldata.getBuffer(),
         });
+
         this.handleResponse(response);
 
         const reader = new BinaryReader(response.response);

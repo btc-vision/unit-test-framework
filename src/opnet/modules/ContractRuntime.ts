@@ -523,7 +523,7 @@ export class ContractRuntime extends Logger {
         }
     }
 
-    private async deployContractAtAddress(data: Buffer): Promise<Buffer | Uint8Array> {
+    private async deployContractAtAddress(data: Buffer): Promise<Buffer> {
         try {
             const reader = new BinaryReader(data);
             this.gasUsed = reader.readU64();
@@ -548,7 +548,7 @@ export class ContractRuntime extends Logger {
             if (this.deployedContracts.has(deployedContractAddress)) {
                 const response = new BinaryWriter(32 + 4);
 
-                return response.getBuffer();
+                return Buffer.from(response.getBuffer());
             }
 
             const gasBefore = this.gasUsed;
@@ -635,7 +635,7 @@ export class ContractRuntime extends Logger {
         usedGas: bigint,
         status: 0 | 1,
         response: Uint8Array,
-    ): Uint8Array {
+    ): Buffer {
         const writer = new BinaryWriter();
         writer.writeAddress(contractAddress);
         writer.writeU32(bytecodeLength);
@@ -643,10 +643,10 @@ export class ContractRuntime extends Logger {
         writer.writeU32(status);
         writer.writeBytes(response);
 
-        return writer.getBuffer();
+        return Buffer.from(writer.getBuffer());
     }
 
-    private load(data: Buffer): Buffer | Uint8Array {
+    private load(data: Buffer): Buffer {
         const reader = new BinaryReader(data);
         const pointer: bigint = reader.readU256();
 
@@ -666,10 +666,10 @@ export class ContractRuntime extends Logger {
         response.writeU256(value || 0n);
         response.writeBoolean(isSlotWarm);
 
-        return response.getBuffer();
+        return Buffer.from(response.getBuffer());
     }
 
-    private tLoad(data: Buffer): Buffer | Uint8Array {
+    private tLoad(data: Buffer): Buffer {
         const reader = new BinaryReader(data);
         const pointer = reader.readU256();
         const value = this.transient.get(pointer);
@@ -678,10 +678,10 @@ export class ContractRuntime extends Logger {
         response.writeU256(value || 0n);
         response.writeBoolean(value !== undefined);
 
-        return response.getBuffer();
+        return Buffer.from(response.getBuffer());
     }
 
-    private store(data: Buffer): Buffer | Uint8Array {
+    private store(data: Buffer): Buffer {
         const reader = new BinaryReader(data);
         const pointer: bigint = reader.readU256();
         const value: bigint = reader.readU256();
@@ -702,10 +702,10 @@ export class ContractRuntime extends Logger {
         const response: BinaryWriter = new BinaryWriter();
         response.writeBoolean(isSlotWarm);
 
-        return response.getBuffer();
+        return Buffer.from(response.getBuffer());
     }
 
-    private tStore(data: Buffer): Buffer | Uint8Array {
+    private tStore(data: Buffer): Buffer {
         const reader = new BinaryReader(data);
         const pointer: bigint = reader.readU256();
         const value: bigint = reader.readU256();
@@ -715,7 +715,7 @@ export class ContractRuntime extends Logger {
         const response: BinaryWriter = new BinaryWriter();
         response.writeBoolean(true);
 
-        return response.getBuffer();
+        return Buffer.from(response.getBuffer());
     }
 
     private checkReentrancy(): void {
@@ -728,7 +728,7 @@ export class ContractRuntime extends Logger {
         }
     }
 
-    private async call(data: Buffer): Promise<Buffer | Uint8Array> {
+    private async call(data: Buffer): Promise<Buffer> {
         if (!this._contract) {
             throw new Error('Contract not initialized');
         }
@@ -838,14 +838,14 @@ export class ContractRuntime extends Logger {
         usedGas: bigint,
         status: 0 | 1,
         response: Uint8Array,
-    ): Uint8Array {
+    ): Buffer {
         const writer = new BinaryWriter();
         writer.writeBoolean(isAddressWarm);
         writer.writeU64(usedGas);
         writer.writeU32(status);
         writer.writeBytes(response);
 
-        return writer.getBuffer();
+        return Buffer.from(writer.getBuffer());
     }
 
     private verifyCallStackDepth(): boolean {
