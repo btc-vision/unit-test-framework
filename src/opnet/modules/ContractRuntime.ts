@@ -13,7 +13,6 @@ import {
     BitcoinNetworkRequest,
     BlockHashResponse,
     EnvironmentVariablesRequest,
-    ExitDataResponse,
     NEW_STORAGE_SLOT_GAS_COST,
     UPDATED_STORAGE_SLOT_GAS_COST,
 } from '@btc-vision/op-vm';
@@ -23,7 +22,7 @@ import { Blockchain } from '../../blockchain/Blockchain.js';
 import { CONSENSUS, ENABLE_BUFFER_AS_STRING } from '../../contracts/configs.js';
 import { CallResponse } from '../interfaces/CallResponse.js';
 import { ContractDetails, StateOverride } from '../interfaces/ContractDetails.js';
-import { ContractParameters, RustContract } from '../vm/RustContract.js';
+import { ContractParameters, ExitDataResponseRaw, RustContract } from '../vm/RustContract.js';
 import { BytecodeManager } from './GetBytecode.js';
 import { FastBigIntMap } from './FastMap.js';
 import { AddressStack } from './AddressStack.js';
@@ -263,7 +262,9 @@ export class ContractRuntime extends Logger {
         return Promise.resolve();
     }
 
-    public async deployContract(pushStates: boolean = true): Promise<ExitDataResponse | undefined> {
+    public async deployContract(
+        pushStates: boolean = true,
+    ): Promise<ExitDataResponseRaw | undefined> {
         if (StateHandler.isDeployed(this.address)) {
             return;
         }

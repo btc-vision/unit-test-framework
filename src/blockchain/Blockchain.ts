@@ -219,7 +219,6 @@ class BlockchainBase extends Logger {
         }
 
         this.contractManager.destroyAll();
-        this.contractManager.destroy();
 
         delete this._contractManager;
     }

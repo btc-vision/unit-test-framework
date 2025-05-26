@@ -5,11 +5,19 @@ import {
     ExitDataResponse,
     init,
 } from '@btc-vision/op-vm';
-
-import { Blockchain } from '../../blockchain/Blockchain.js';
+import { BinaryWriter } from '@btc-vision/transaction';
 import { RustContractBinding } from './RustContractBinding.js';
+import { Blockchain } from '../../blockchain/Blockchain.js';
+import { ENABLE_BUFFER_AS_STRING } from '../../contracts/configs.js';
 
 init();
+
+export interface ExitDataResponseRaw {
+    status: number;
+    data: Buffer;
+    gasUsed: bigint;
+    proofs: Array<{ proof: Buffer; vk: Buffer }>;
+}
 
 export interface ContractParameters extends Omit<RustContractBinding, 'id'> {
     readonly address: string;
@@ -92,6 +100,16 @@ export class RustContract {
         return this._params;
     }
 
+    public static getErrorAsBuffer(error: Error | string | undefined): Uint8Array {
+        const errorWriter = new BinaryWriter();
+        errorWriter.writeSelector(0x63739d5c);
+        errorWriter.writeStringWithLength(
+            typeof error === 'string' ? error : error?.message || 'Unknown error',
+        );
+
+        return errorWriter.getBuffer();
+    }
+
     public static decodeRevertData(revertDataBytes: Uint8Array): Error {
         if (RustContract.startsWithErrorSelector(revertDataBytes)) {
             const decoder = new TextDecoder();
@@ -134,14 +152,14 @@ export class RustContract {
         if (this._instantiated) return;
 
         this.contractManager.instantiate(
-            this._id,
-            this.params.address,
-            this.params.bytecode,
-            this.params.gasUsed,
-            this.params.gasMax,
-            this.params.memoryPagesUsed,
-            this.params.network,
-            this.params.isDebugMode,
+            BigInt(this._id.toString()),
+            String(this.params.address),
+            Buffer.copyBytesFrom(this.params.bytecode),
+            BigInt(this.params.gasUsed.toString()),
+            BigInt(this.params.gasMax.toString()),
+            BigInt(this.params.memoryPagesUsed.toString()),
+            Number(this.params.network),
+            Boolean(this.params.isDebugMode),
             this.params.returnProofs,
         );
 
@@ -181,11 +199,16 @@ export class RustContract {
         }
     }
 
-    public async execute(calldata: Uint8Array | Buffer): Promise<ExitDataResponse> {
+    public async execute(calldata: Uint8Array | Buffer): Promise<Readonly<ExitDataResponseRaw>> {
         if (this.enableDebug) console.log('execute', calldata);
 
         try {
-            return await this.contractManager.execute(this.id, Buffer.from(calldata));
+            const result = await this.contractManager.execute(
+                this.id,
+                Buffer.copyBytesFrom(calldata),
+            );
+
+            return this.toReadonlyObject(result);
         } catch (e) {
             if (this.enableDebug) console.log('Error in execute', e);
 
@@ -198,7 +221,30 @@ export class RustContract {
         if (this.enableDebug) console.log('Setting environment', environmentVariables);
 
         try {
-            this.contractManager.setEnvironmentVariables(this.id, environmentVariables);
+            this.contractManager.setEnvironmentVariables(
+                this.id,
+                Object.preventExtensions(
+                    Object.freeze(
+                        Object.seal({
+                            blockNumber: BigInt(environmentVariables.blockNumber.toString()),
+                            blockMedianTime: BigInt(
+                                environmentVariables.blockMedianTime.toString(),
+                            ),
+                            blockHash: Buffer.copyBytesFrom(environmentVariables.blockHash),
+                            txId: Buffer.copyBytesFrom(environmentVariables.txId),
+                            txHash: Buffer.copyBytesFrom(environmentVariables.txHash),
+                            contractAddress: Buffer.copyBytesFrom(
+                                environmentVariables.contractAddress,
+                            ),
+                            contractDeployer: Buffer.copyBytesFrom(
+                                environmentVariables.contractDeployer,
+                            ),
+                            caller: Buffer.copyBytesFrom(environmentVariables.caller),
+                            origin: Buffer.copyBytesFrom(environmentVariables.origin),
+                        }),
+                    ),
+                ),
+            );
         } catch (e) {
             if (this.enableDebug) console.log('Error in setEnvironment', e);
 
@@ -207,11 +253,16 @@ export class RustContract {
         }
     }
 
-    public async onDeploy(calldata: Uint8Array | Buffer): Promise<ExitDataResponse> {
+    public async onDeploy(calldata: Uint8Array | Buffer): Promise<Readonly<ExitDataResponseRaw>> {
         if (this.enableDebug) console.log('Setting onDeployment', calldata);
 
         try {
-            return await this.contractManager.onDeploy(this.id, Buffer.from(calldata));
+            const result = await this.contractManager.onDeploy(
+                this.id,
+                Buffer.copyBytesFrom(calldata),
+            );
+
+            return this.toReadonlyObject(result);
         } catch (e) {
             if (this.enableDebug) console.log('Error in onDeployment', e);
 
@@ -221,7 +272,8 @@ export class RustContract {
     }
 
     public getRevertError(): Error {
-        const revertData = this.contractManager.getExitData(this.id).data;
+        const revertInfo = this.contractManager.getExitData(this.id);
+        const revertData = this.copyBuffer(revertInfo.data);
 
         try {
             this.dispose();
@@ -230,8 +282,7 @@ export class RustContract {
         if (revertData.length === 0) {
             return new Error(`Execution reverted`);
         } else {
-            const revertDataBytes = Uint8Array.from(revertData);
-            return RustContract.decodeRevertData(revertDataBytes);
+            return RustContract.decodeRevertData(revertData);
         }
     }
 
@@ -246,6 +297,30 @@ export class RustContract {
             const error = e as Error;
             throw this.getError(error);
         }
+    }
+
+    private copyBuffer(input: Buffer | string): Buffer {
+        return ENABLE_BUFFER_AS_STRING
+            ? Buffer.from(input as string, 'hex')
+            : Buffer.copyBytesFrom(input as Buffer);
+    }
+
+    private toReadonlyObject(result: ExitDataResponse): Readonly<ExitDataResponseRaw> {
+        return Object.preventExtensions(
+            Object.freeze(
+                Object.seal({
+                    status: Number(result.status),
+                    data: this.copyBuffer(result.data),
+                    gasUsed: BigInt(result.gasUsed.toString()),
+                    proofs: result.proofs.map((proof) => {
+                        return {
+                            proof: this.copyBuffer(proof.proof),
+                            vk: this.copyBuffer(proof.vk),
+                        };
+                    }),
+                }),
+            ),
+        );
     }
 
     private getError(err: Error): Error {

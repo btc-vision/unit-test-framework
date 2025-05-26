@@ -1,10 +1,9 @@
 import { AddressSet, NetEvent } from '@btc-vision/transaction';
 import { AddressStack } from '../modules/AddressStack';
-import { ExitDataResponse } from '@btc-vision/op-vm';
-import { RustContract } from '../vm/RustContract.js';
+import { ExitDataResponseRaw, RustContract } from '../vm/RustContract.js';
 
 export interface ICallResponse {
-    exitData: ExitDataResponse;
+    exitData: ExitDataResponseRaw;
     events: NetEvent[];
     callStack: AddressStack;
     touchedAddresses: AddressSet;
