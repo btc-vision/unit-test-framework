@@ -30,11 +30,7 @@ export class TestContractRuntime extends ContractRuntime {
     );
     private readonly modifyStateSelector: number = this.getSelector('modifyState(bytes32,bytes32)');
 
-    public constructor(
-        deployer: Address,
-        address: Address,
-        gasLimit: bigint = 100_000_000_000_000_000n,
-    ) {
+    public constructor(deployer: Address, address: Address, gasLimit: bigint = 2_500_000_000_000n) {
         super({
             address: address,
             deployer: deployer,

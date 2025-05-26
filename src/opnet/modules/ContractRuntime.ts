@@ -20,7 +20,7 @@ import {
 import bitcoin from '@btc-vision/bitcoin';
 import crypto from 'crypto';
 import { Blockchain } from '../../blockchain/Blockchain.js';
-import { CONSENSUS } from '../../contracts/configs.js';
+import { CONSENSUS, ENABLE_BUFFER_AS_STRING } from '../../contracts/configs.js';
 import { CallResponse } from '../interfaces/CallResponse.js';
 import { ContractDetails, StateOverride } from '../interfaces/ContractDetails.js';
 import { ContractParameters, RustContract } from '../vm/RustContract.js';
@@ -523,7 +523,7 @@ export class ContractRuntime extends Logger {
         }
     }
 
-    private async deployContractAtAddress(data: Buffer): Promise<Buffer> {
+    private async deployContractAtAddress(data: Buffer): Promise<Buffer | string> {
         try {
             const reader = new BinaryReader(data);
             this.gasUsed = reader.readU64();
@@ -605,13 +605,15 @@ export class ContractRuntime extends Logger {
             const used = deployResponse.gasUsed - gasBefore;
             this.gasUsed = deployResponse.gasUsed;
 
-            return this.buildDeployFromAddressResponse(
+            const out = this.buildDeployFromAddressResponse(
                 deployedContractAddress,
                 requestedContractBytecode.byteLength,
                 used,
                 deployResponse.status as 0 | 1,
                 deployResponse.data,
             );
+
+            return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
         } catch (e) {
             if (this.logUnexpectedErrors) {
                 this.warn(
@@ -619,13 +621,15 @@ export class ContractRuntime extends Logger {
                 );
             }
 
-            return this.buildDeployFromAddressResponse(
+            const out = this.buildDeployFromAddressResponse(
                 Address.zero(),
                 0,
                 this.gasUsed,
                 1,
                 this.getErrorAsBuffer(e as Error),
             );
+
+            return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
         }
     }
 
@@ -646,7 +650,7 @@ export class ContractRuntime extends Logger {
         return Buffer.from(writer.getBuffer());
     }
 
-    private load(data: Buffer): Buffer {
+    private load(data: Buffer): Buffer | string {
         const reader = new BinaryReader(data);
         const pointer: bigint = reader.readU256();
 
@@ -666,10 +670,11 @@ export class ContractRuntime extends Logger {
         response.writeU256(value || 0n);
         response.writeBoolean(isSlotWarm);
 
-        return Buffer.from(response.getBuffer());
+        const out = Buffer.from(response.getBuffer());
+        return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
     }
 
-    private tLoad(data: Buffer): Buffer {
+    private tLoad(data: Buffer): Buffer | string {
         const reader = new BinaryReader(data);
         const pointer = reader.readU256();
         const value = this.transient.get(pointer);
@@ -678,10 +683,11 @@ export class ContractRuntime extends Logger {
         response.writeU256(value || 0n);
         response.writeBoolean(value !== undefined);
 
-        return Buffer.from(response.getBuffer());
+        const out = Buffer.from(response.getBuffer());
+        return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
     }
 
-    private store(data: Buffer): Buffer {
+    private store(data: Buffer): Buffer | string {
         const reader = new BinaryReader(data);
         const pointer: bigint = reader.readU256();
         const value: bigint = reader.readU256();
@@ -702,10 +708,11 @@ export class ContractRuntime extends Logger {
         const response: BinaryWriter = new BinaryWriter();
         response.writeBoolean(isSlotWarm);
 
-        return Buffer.from(response.getBuffer());
+        const out = Buffer.from(response.getBuffer());
+        return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
     }
 
-    private tStore(data: Buffer): Buffer {
+    private tStore(data: Buffer): Buffer | string {
         const reader = new BinaryReader(data);
         const pointer: bigint = reader.readU256();
         const value: bigint = reader.readU256();
@@ -715,7 +722,8 @@ export class ContractRuntime extends Logger {
         const response: BinaryWriter = new BinaryWriter();
         response.writeBoolean(true);
 
-        return Buffer.from(response.getBuffer());
+        const out = Buffer.from(response.getBuffer());
+        return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
     }
 
     private checkReentrancy(): void {
@@ -728,7 +736,7 @@ export class ContractRuntime extends Logger {
         }
     }
 
-    private async call(data: Buffer): Promise<Buffer> {
+    private async call(data: Buffer): Promise<Buffer | string> {
         if (!this._contract) {
             throw new Error('Contract not initialized');
         }
@@ -804,12 +812,14 @@ export class ContractRuntime extends Logger {
             this.checkReentrancy();
 
             const gasDifference = this.gasUsed - gasUsed;
-            return this.buildCallResponse(
+            const out = this.buildCallResponse(
                 isAddressWarm,
                 gasDifference,
                 callResponse.status as 0 | 1,
                 callResponse.response,
             );
+
+            return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
         } catch (e) {
             if (this.logUnexpectedErrors) {
                 this.warn(
@@ -818,7 +828,13 @@ export class ContractRuntime extends Logger {
             }
 
             const difference = this.gasUsed - gasUsed;
-            return this.buildCallResponse(false, difference, 1, this.getErrorAsBuffer(e as Error));
+            const out = this.buildCallResponse(
+                false,
+                difference,
+                1,
+                this.getErrorAsBuffer(e as Error),
+            );
+            return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
         }
     }
 
@@ -965,21 +981,43 @@ export class ContractRuntime extends Logger {
         }
 
         if (blockNumber > Blockchain.blockNumber) {
-            return Promise.resolve({
-                blockHash: Buffer.from([
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0,
-                ]),
-                isBlockWarm,
-            });
+            return Promise.resolve(
+                this.responseBlockHash({
+                    blockHash: Buffer.from([
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0,
+                    ]),
+                    isBlockWarm,
+                }),
+            );
         }
 
         const fakeBlockHash = crypto.createHash('sha256').update(blockNumber.toString()).digest();
+        return Promise.resolve(
+            this.responseBlockHash({
+                blockHash: fakeBlockHash,
+                isBlockWarm,
+            }),
+        );
+    }
 
-        return Promise.resolve({
-            blockHash: fakeBlockHash,
-            isBlockWarm,
-        });
+    private responseBlockHash(
+        response: Omit<BlockHashResponse, 'blockHash'> & {
+            blockHash: Buffer;
+        },
+    ): BlockHashResponse {
+        if (ENABLE_BUFFER_AS_STRING) {
+            return {
+                ...response,
+                blockHash: response.blockHash.toString('hex'),
+            };
+        } else {
+            return {
+                ...response,
+                // @ts-expect-error - Buffer is not assignable to Uint8Array
+                blockHash: response.blockHash,
+            };
+        }
     }
 
     private fakeLoad(): void {
@@ -1044,8 +1082,16 @@ export class ContractRuntime extends Logger {
             call: this.call.bind(this),
             log: this.onLog.bind(this),
             emit: this.onEvent.bind(this),
-            inputs: this.onInputsRequested.bind(this),
-            outputs: this.onOutputsRequested.bind(this),
+            inputs: async (): Promise<Buffer | string> => {
+                const out = await this.onInputsRequested();
+
+                return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
+            },
+            outputs: async (): Promise<Buffer | string> => {
+                const out = await this.onOutputsRequested();
+
+                return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
+            },
             accountType: this.getAccountType.bind(this),
             blockHash: this.getBlockHash.bind(this),
         };

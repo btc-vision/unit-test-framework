@@ -20,3 +20,4 @@ export const TRACE_GAS: boolean = false;
 export const TRACE_POINTERS: boolean = false;
 export const TRACE_CALLS: boolean = false;
 export const TRACE_DEPLOYMENTS: boolean = false;
+export const ENABLE_BUFFER_AS_STRING: boolean = true;

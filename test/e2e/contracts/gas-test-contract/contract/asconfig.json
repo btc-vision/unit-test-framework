@@ -23,6 +23,7 @@
         "runtime": "stub",
         "memoryBase": 0,
         "initialMemory": 1,
-        "exportStart": "start"
+        "exportStart": "start",
+        "transform": "@btc-vision/opnet-transform"
     }
 }
