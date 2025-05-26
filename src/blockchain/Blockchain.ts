@@ -32,7 +32,7 @@ class BlockchainBase extends Logger {
     public traceDeployments: boolean = TRACE_DEPLOYMENTS;
     public simulateRealEnvironment: boolean = false;
 
-    private readonly enableDebug: boolean = true;
+    private readonly enableDebug: boolean = false;
     private readonly contracts: AddressMap<ContractRuntime> = new AddressMap<ContractRuntime>();
     private readonly bindings: Map<bigint, RustContractBinding> = new Map<
         bigint,
