@@ -22,7 +22,12 @@ import { Blockchain } from '../../blockchain/Blockchain.js';
 import { CONSENSUS, ENABLE_BUFFER_AS_STRING } from '../../contracts/configs.js';
 import { CallResponse } from '../interfaces/CallResponse.js';
 import { ContractDetails, StateOverride } from '../interfaces/ContractDetails.js';
-import { ContractParameters, ExitDataResponseRaw, RustContract } from '../vm/RustContract.js';
+import {
+    ContractParameters,
+    EnvironmentVariablesRequestRaw,
+    ExitDataResponseRaw,
+    RustContract,
+} from '../vm/RustContract.js';
 import { BytecodeManager } from './GetBytecode.js';
 import { FastBigIntMap } from './FastMap.js';
 import { AddressStack } from './AddressStack.js';
@@ -182,7 +187,7 @@ export class ContractRuntime extends Logger {
         writer.writeAddress(address);
         writer.writeU64(Blockchain.medianTimestamp);
 
-        const params: EnvironmentVariablesRequest = {
+        const params: EnvironmentVariablesRequestRaw = {
             blockHash: this.blockHash,
             blockNumber: currentBlock,
             blockMedianTime: Blockchain.medianTimestamp,
