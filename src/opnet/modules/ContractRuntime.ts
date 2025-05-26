@@ -818,7 +818,7 @@ export class ContractRuntime extends Logger {
             }
 
             const difference = this.gasUsed - gasUsed;
-            return this.buildCallResponse(false, difference, 1, this.getErrorAsBuffer(e as Error));
+            return this.buildCallResponse(false, difference, 1, new Uint8Array(0));
         }
     }
 
