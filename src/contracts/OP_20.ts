@@ -45,7 +45,7 @@ export class OP_20 extends ContractRuntime {
     );
 
     protected readonly totalSupplySelector: number = Number(
-        `0x${this.abiCoder.encodeSelector('totalSupply')}`,
+        `0x${this.abiCoder.encodeSelector('totalSupply()')}`,
     );
 
     protected readonly approveSelector: number = Number(
