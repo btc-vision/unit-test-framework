@@ -12,7 +12,6 @@ import {
     AccountTypeResponse,
     BitcoinNetworkRequest,
     BlockHashResponse,
-    EnvironmentVariablesRequest,
     NEW_STORAGE_SLOT_GAS_COST,
     UPDATED_STORAGE_SLOT_GAS_COST,
 } from '@btc-vision/op-vm';
@@ -240,7 +239,7 @@ export class ContractRuntime extends Logger {
                 exitData: {
                     status: 1,
                     gasUsed: this.getGasUsed(), // if we don't do gasMax here and the execution actually used some gas, the user is getting free gas on partial reverts, otherwise rust need to return the real used gas.
-                    data: Buffer.from(this.getErrorAsBuffer(newResponse)),
+                    data: this.getErrorAsBuffer(newResponse),
                     proofs: [],
                 },
                 events: this.events,
@@ -314,7 +313,7 @@ export class ContractRuntime extends Logger {
             return {
                 status: 1,
                 gasUsed: this.gasUsed,
-                data: Buffer.from(this.getErrorAsBuffer(newResponse)),
+                data: this.getErrorAsBuffer(newResponse),
                 proofs: [],
             };
         } finally {
@@ -529,14 +528,14 @@ export class ContractRuntime extends Logger {
         }
     }
 
-    private async deployContractAtAddress(data: Buffer): Promise<Buffer | string> {
+    private async deployContractAtAddress(data: Uint8Array): Promise<Uint8Array | string> {
         try {
             const reader = new BinaryReader(data);
             this.gasUsed = reader.readU64();
 
             const address: Address = reader.readAddress();
-            const salt: Buffer = Buffer.from(reader.readBytes(32));
-            const calldata: Buffer = Buffer.from(reader.readBytes(reader.bytesLeft() | 0));
+            const salt: Uint8Array = reader.readBytes(32);
+            const calldata: Uint8Array = reader.readBytes(reader.bytesLeft() | 0);
 
             if (Blockchain.traceDeployments) {
                 const saltBig = BigInt(
@@ -544,17 +543,21 @@ export class ContractRuntime extends Logger {
                 );
 
                 this.log(
-                    `This contract wants to deploy the same bytecode as ${address}. Salt: ${salt.toString('hex')} or ${saltBig}`,
+                    `This contract wants to deploy the same bytecode as ${address}. Salt: ${Buffer.from(salt).toString('hex')} or ${saltBig}`,
                 );
             }
 
             // TODO: Add deployment stack like in opnet-node
 
-            const deployedContractAddress = Blockchain.generateAddress(this.address, salt, address);
+            const deployedContractAddress = Blockchain.generateAddress(
+                this.address,
+                Buffer.from(salt),
+                address,
+            );
             if (this.deployedContracts.has(deployedContractAddress)) {
                 const response = new BinaryWriter(32 + 4);
 
-                return Buffer.from(response.getBuffer());
+                return response.getBuffer();
             }
 
             const gasBefore = this.gasUsed;
@@ -565,7 +568,7 @@ export class ContractRuntime extends Logger {
                 gasLimit: this.gasMax,
                 gasUsed: this.gasUsed,
                 bytecode: requestedContractBytecode,
-                deploymentCalldata: calldata,
+                deploymentCalldata: Buffer.from(calldata),
             });
 
             if (Blockchain.traceDeployments) {
@@ -619,7 +622,7 @@ export class ContractRuntime extends Logger {
                 deployResponse.data,
             );
 
-            return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
+            return ENABLE_BUFFER_AS_STRING ? Buffer.from(out).toString('hex') : out;
         } catch (e) {
             if (this.logUnexpectedErrors) {
                 this.warn(
@@ -635,7 +638,7 @@ export class ContractRuntime extends Logger {
                 this.getErrorAsBuffer(e as Error),
             );
 
-            return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
+            return ENABLE_BUFFER_AS_STRING ? Buffer.from(out).toString('hex') : out;
         }
     }
 
@@ -643,9 +646,9 @@ export class ContractRuntime extends Logger {
         contractAddress: Address,
         bytecodeLength: number,
         usedGas: bigint,
-        status: 0 | 1,
+        status: number,
         response: Uint8Array,
-    ): Buffer {
+    ): Uint8Array {
         const writer = new BinaryWriter();
         writer.writeAddress(contractAddress);
         writer.writeU32(bytecodeLength);
@@ -653,10 +656,10 @@ export class ContractRuntime extends Logger {
         writer.writeU32(status);
         writer.writeBytes(response);
 
-        return Buffer.from(writer.getBuffer());
+        return writer.getBuffer();
     }
 
-    private load(data: Buffer): Buffer | string {
+    private load(data: Uint8Array): Uint8Array | string {
         const reader = new BinaryReader(data);
         const pointer: bigint = reader.readU256();
 
@@ -676,11 +679,11 @@ export class ContractRuntime extends Logger {
         response.writeU256(value || 0n);
         response.writeBoolean(isSlotWarm);
 
-        const out = Buffer.from(response.getBuffer());
-        return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
+        const out = response.getBuffer();
+        return ENABLE_BUFFER_AS_STRING ? Buffer.from(out).toString('hex') : out;
     }
 
-    private tLoad(data: Buffer): Buffer | string {
+    private tLoad(data: Uint8Array): Uint8Array | string {
         const reader = new BinaryReader(data);
         const pointer = reader.readU256();
         const value = this.transient.get(pointer);
@@ -689,11 +692,11 @@ export class ContractRuntime extends Logger {
         response.writeU256(value || 0n);
         response.writeBoolean(value !== undefined);
 
-        const out = Buffer.from(response.getBuffer());
-        return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
+        const out = response.getBuffer();
+        return ENABLE_BUFFER_AS_STRING ? Buffer.from(out).toString('hex') : out;
     }
 
-    private store(data: Buffer): Buffer | string {
+    private store(data: Uint8Array): Uint8Array | string {
         const reader = new BinaryReader(data);
         const pointer: bigint = reader.readU256();
         const value: bigint = reader.readU256();
@@ -714,11 +717,11 @@ export class ContractRuntime extends Logger {
         const response: BinaryWriter = new BinaryWriter();
         response.writeBoolean(isSlotWarm);
 
-        const out = Buffer.from(response.getBuffer());
-        return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
+        const out = response.getBuffer();
+        return ENABLE_BUFFER_AS_STRING ? Buffer.from(out).toString('hex') : out;
     }
 
-    private tStore(data: Buffer): Buffer | string {
+    private tStore(data: Uint8Array): Uint8Array | string {
         const reader = new BinaryReader(data);
         const pointer: bigint = reader.readU256();
         const value: bigint = reader.readU256();
@@ -728,8 +731,8 @@ export class ContractRuntime extends Logger {
         const response: BinaryWriter = new BinaryWriter();
         response.writeBoolean(true);
 
-        const out = Buffer.from(response.getBuffer());
-        return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
+        const out = response.getBuffer();
+        return ENABLE_BUFFER_AS_STRING ? Buffer.from(out).toString('hex') : out;
     }
 
     private checkReentrancy(): void {
@@ -742,7 +745,7 @@ export class ContractRuntime extends Logger {
         }
     }
 
-    private async call(data: Buffer): Promise<Buffer | string> {
+    private async call(data: Uint8Array): Promise<Uint8Array | string> {
         if (!this._contract) {
             throw new Error('Contract not initialized');
         }
@@ -825,7 +828,7 @@ export class ContractRuntime extends Logger {
                 callResponse.response,
             );
 
-            return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
+            return ENABLE_BUFFER_AS_STRING ? Buffer.from(out).toString('hex') : out;
         } catch (e) {
             if (this.logUnexpectedErrors) {
                 this.warn(
@@ -840,7 +843,7 @@ export class ContractRuntime extends Logger {
                 1,
                 this.getErrorAsBuffer(e as Error),
             );
-            return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
+            return ENABLE_BUFFER_AS_STRING ? Buffer.from(out).toString('hex') : out;
         }
     }
 
@@ -860,14 +863,14 @@ export class ContractRuntime extends Logger {
         usedGas: bigint,
         status: 0 | 1,
         response: Uint8Array,
-    ): Buffer {
+    ): Uint8Array {
         const writer = new BinaryWriter();
         writer.writeBoolean(isAddressWarm);
         writer.writeU64(usedGas);
         writer.writeU32(status);
         writer.writeBytes(response);
 
-        return Buffer.from(writer.getBuffer());
+        return writer.getBuffer();
     }
 
     private verifyCallStackDepth(): boolean {
@@ -904,7 +907,7 @@ export class ContractRuntime extends Logger {
         }
     }
 
-    private onEvent(data: Buffer): void {
+    private onEvent(data: Uint8Array): void {
         const reader = new BinaryReader(data);
         const eventNameLength = reader.readU16();
         if (CONSENSUS.TRANSACTIONS.EVENTS.MAXIMUM_EVENT_NAME_LENGTH < eventNameLength) {
@@ -928,25 +931,25 @@ export class ContractRuntime extends Logger {
         this.events.push(event);
     }
 
-    private onInputsRequested(): Promise<Buffer> {
+    private onInputsRequested(): Promise<Uint8Array> {
         const tx = Blockchain.transaction;
 
         if (!tx) {
-            return Promise.resolve(Buffer.alloc(1));
+            return Promise.resolve(new Uint8Array([0]));
         } else {
             if (CONSENSUS.TRANSACTIONS.MAXIMUM_INPUTS < tx.inputs.length) {
                 throw new Error('OP_NET: MAXIMUM_INPUTS EXCEEDED');
             }
 
-            return Promise.resolve(Buffer.from(tx.serializeInputs()));
+            return Promise.resolve(tx.serializeInputs());
         }
     }
 
-    private onOutputsRequested(): Promise<Buffer> {
+    private onOutputsRequested(): Promise<Uint8Array> {
         const tx = Blockchain.transaction;
 
         if (!tx) {
-            return Promise.resolve(Buffer.alloc(1));
+            return Promise.resolve(new Uint8Array([0]));
         } else {
             if (CONSENSUS.TRANSACTIONS.MAXIMUM_OUTPUTS < tx.outputs.length) {
                 throw new Error(
@@ -954,11 +957,11 @@ export class ContractRuntime extends Logger {
                 );
             }
 
-            return Promise.resolve(Buffer.from(tx.serializeOutputs()));
+            return Promise.resolve(tx.serializeOutputs());
         }
     }
 
-    private getAccountType(data: Buffer): Promise<AccountTypeResponse> {
+    private getAccountType(data: Uint8Array): Promise<AccountTypeResponse> {
         const reader = new BinaryReader(data);
         const targetAddress = reader.readAddress();
 
@@ -1009,18 +1012,19 @@ export class ContractRuntime extends Logger {
 
     private responseBlockHash(
         response: Omit<BlockHashResponse, 'blockHash'> & {
-            blockHash: Buffer;
+            blockHash: Uint8Array;
         },
     ): BlockHashResponse {
         if (ENABLE_BUFFER_AS_STRING) {
             return {
                 ...response,
+                // @ts-ignore
                 blockHash: response.blockHash.toString('hex'),
             };
         } else {
             return {
                 ...response,
-                // @ts-expect-error - Buffer is not assignable to Uint8Array
+                // @ts-ignore
                 blockHash: response.blockHash,
             };
         }
@@ -1045,7 +1049,7 @@ export class ContractRuntime extends Logger {
             returnProofs: this.proofFeatureEnabled,
             contractManager: Blockchain.contractManager,
             deployContractAtAddress: this.deployContractAtAddress.bind(this),
-            load: (data: Buffer) => {
+            load: (data: Uint8Array) => {
                 return new Promise((resolve) => {
                     if (Blockchain.simulateRealEnvironment) {
                         this.fakeLoad();
@@ -1055,7 +1059,7 @@ export class ContractRuntime extends Logger {
                     }
                 });
             },
-            store: (data: Buffer) => {
+            store: (data: Uint8Array) => {
                 return new Promise((resolve) => {
                     if (Blockchain.simulateRealEnvironment) {
                         this.fakeLoad();
@@ -1065,7 +1069,7 @@ export class ContractRuntime extends Logger {
                     }
                 });
             },
-            tLoad: (data: Buffer) => {
+            tLoad: (data: Uint8Array) => {
                 return new Promise((resolve) => {
                     if (Blockchain.simulateRealEnvironment) {
                         this.fakeLoad();
@@ -1075,7 +1079,7 @@ export class ContractRuntime extends Logger {
                     }
                 });
             },
-            tStore: (data: Buffer) => {
+            tStore: (data: Uint8Array) => {
                 return new Promise((resolve) => {
                     if (Blockchain.simulateRealEnvironment) {
                         this.fakeLoad();
@@ -1088,15 +1092,15 @@ export class ContractRuntime extends Logger {
             call: this.call.bind(this),
             log: this.onLog.bind(this),
             emit: this.onEvent.bind(this),
-            inputs: async (): Promise<Buffer | string> => {
+            inputs: async (): Promise<Uint8Array | string> => {
                 const out = await this.onInputsRequested();
 
-                return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
+                return ENABLE_BUFFER_AS_STRING ? Buffer.from(out).toString('hex') : out;
             },
-            outputs: async (): Promise<Buffer | string> => {
+            outputs: async (): Promise<Uint8Array | string> => {
                 const out = await this.onOutputsRequested();
 
-                return ENABLE_BUFFER_AS_STRING ? out.toString('hex') : out;
+                return ENABLE_BUFFER_AS_STRING ? Buffer.from(out).toString('hex') : out;
             },
             accountType: this.getAccountType.bind(this),
             blockHash: this.getBlockHash.bind(this),
