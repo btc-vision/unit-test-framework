@@ -108,7 +108,7 @@ export class RustContract {
         const errorSelectorBytes = Uint8Array.from([0x63, 0x73, 0x9d, 0x5c]);
         return (
             revertDataBytes.length >= SELECTOR_BYTE_LENGTH + U32_BYTE_LENGTH &&
-            this.areBytesEqual(revertDataBytes.slice(0, 4), errorSelectorBytes)
+            this.areBytesEqual(revertDataBytes.slice(0, SELECTOR_BYTE_LENGTH), errorSelectorBytes)
         );
     }
 
