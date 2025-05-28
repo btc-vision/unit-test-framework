@@ -42,7 +42,7 @@
     "devDependencies": {
         "@btc-vision/as-bignum": "^0.0.5",
         "@btc-vision/btc-runtime": "../btc-runtime",
-        "@btc-vision/opnet-transform": "^0.0.5",
+        "@btc-vision/opnet-transform": "^0.1.0",
         "@eslint/js": "^9.22.0",
         "@types/node": "^22.13.10",
         "@typescript-eslint/eslint-plugin": "^8.26.1",
