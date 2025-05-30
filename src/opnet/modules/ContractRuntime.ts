@@ -884,7 +884,7 @@ export class ContractRuntime extends Logger {
 
     private onEvent(data: Buffer): void {
         const reader = new BinaryReader(data);
-        const eventNameLength = reader.readU16();
+        const eventNameLength = reader.readU32();
         if (CONSENSUS.TRANSACTIONS.EVENTS.MAXIMUM_EVENT_NAME_LENGTH < eventNameLength) {
             throw new Error('OP_NET: Maximum event type length exceeded.');
         }
