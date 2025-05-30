@@ -237,7 +237,7 @@ export class ContractRuntime extends Logger {
                     status: 1,
                     gasUsed: this.getGasUsed(), // if we don't do gasMax here and the execution actually used some gas, the user is getting free gas on partial reverts, otherwise rust need to return the real used gas.
                     data: Buffer.from(this.getErrorAsBuffer(newResponse)),
-                    proofs: []
+                    proofs: [],
                 },
                 events: this.events,
                 callStack: this.callStack,
@@ -309,7 +309,7 @@ export class ContractRuntime extends Logger {
                 status: 1,
                 gasUsed: this.gasUsed,
                 data: Buffer.from(this.getErrorAsBuffer(newResponse)),
-                proofs: []
+                proofs: [],
             };
         } finally {
             this.dispose();
@@ -884,7 +884,7 @@ export class ContractRuntime extends Logger {
 
     private onEvent(data: Buffer): void {
         const reader = new BinaryReader(data);
-        const eventNameLength = reader.readU16();
+        const eventNameLength = reader.readU32();
         if (CONSENSUS.TRANSACTIONS.EVENTS.MAXIMUM_EVENT_NAME_LENGTH < eventNameLength) {
             throw new Error('OP_NET: Maximum event type length exceeded.');
         }
