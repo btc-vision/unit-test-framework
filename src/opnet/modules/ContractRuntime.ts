@@ -1,12 +1,4 @@
-import {
-    ABICoder,
-    Address,
-    AddressMap,
-    AddressSet,
-    BinaryReader,
-    BinaryWriter,
-    NetEvent,
-} from '@btc-vision/transaction';
+import bitcoin from '@btc-vision/bitcoin';
 import { Logger } from '@btc-vision/logger';
 import {
     AccountTypeResponse,
@@ -17,18 +9,26 @@ import {
     NEW_STORAGE_SLOT_GAS_COST,
     UPDATED_STORAGE_SLOT_GAS_COST,
 } from '@btc-vision/op-vm';
-import bitcoin from '@btc-vision/bitcoin';
+import {
+    ABICoder,
+    Address,
+    AddressMap,
+    AddressSet,
+    BinaryReader,
+    BinaryWriter,
+    NetEvent,
+} from '@btc-vision/transaction';
 import crypto from 'crypto';
 import { Blockchain } from '../../blockchain/Blockchain.js';
 import { CONSENSUS } from '../../contracts/configs.js';
 import { CallResponse } from '../interfaces/CallResponse.js';
 import { ContractDetails, StateOverride } from '../interfaces/ContractDetails.js';
-import { ContractParameters, RustContract } from '../vm/RustContract.js';
-import { BytecodeManager } from './GetBytecode.js';
-import { FastBigIntMap } from './FastMap.js';
-import { AddressStack } from './AddressStack.js';
-import { StateHandler } from '../vm/StateHandler.js';
 import { ExecutionParameters } from '../interfaces/ExecuteParameters.js';
+import { ContractParameters, RustContract } from '../vm/RustContract.js';
+import { StateHandler } from '../vm/StateHandler.js';
+import { AddressStack } from './AddressStack.js';
+import { FastBigIntMap } from './FastMap.js';
+import { BytecodeManager } from './GetBytecode.js';
 
 export class ContractRuntime extends Logger {
     public readonly logColor: string = '#39b2f3';
@@ -129,8 +129,8 @@ export class ContractRuntime extends Logger {
         return crypto.getRandomValues(new Uint8Array(32));
     }
 
-    private get p2trAddress(): string {
-        return this.address.p2tr(Blockchain.network);
+    private get p2opAddress(): string {
+        return this.address.p2op(Blockchain.network);
     }
 
     public applyStatesOverride(override: StateOverride): void {
@@ -564,7 +564,7 @@ export class ContractRuntime extends Logger {
 
             if (Blockchain.traceDeployments) {
                 this.info(
-                    `Deploying contract at ${deployedContractAddress.p2tr(Blockchain.network)}`,
+                    `Deploying contract at ${deployedContractAddress.p2op(Blockchain.network)}`,
                 );
             }
 
@@ -573,7 +573,7 @@ export class ContractRuntime extends Logger {
 
             if (Blockchain.traceDeployments) {
                 this.log(
-                    `Deployed contract at ${deployedContractAddress.p2tr(Blockchain.network)}`,
+                    `Deployed contract at ${deployedContractAddress.p2op(Blockchain.network)}`,
                 );
             }
 
@@ -747,7 +747,7 @@ export class ContractRuntime extends Logger {
 
             if (Blockchain.traceCalls) {
                 this.info(
-                    `Attempting to call contract ${contractAddress.p2tr(Blockchain.network)}`,
+                    `Attempting to call contract ${contractAddress.p2op(Blockchain.network)}`,
                 );
             }
 
@@ -818,7 +818,7 @@ export class ContractRuntime extends Logger {
             }
 
             const difference = this.gasUsed - gasUsed;
-            return this.buildCallResponse(false, difference, 1, this.getErrorAsBuffer(e as Error));
+            return this.buildCallResponse(false, difference, 1, new Uint8Array(0));
         }
     }
 
@@ -884,7 +884,7 @@ export class ContractRuntime extends Logger {
 
     private onEvent(data: Buffer): void {
         const reader = new BinaryReader(data);
-        const eventNameLength = reader.readU16();
+        const eventNameLength = reader.readU32();
         if (CONSENSUS.TRANSACTIONS.EVENTS.MAXIMUM_EVENT_NAME_LENGTH < eventNameLength) {
             throw new Error('OP_NET: Maximum event type length exceeded.');
         }
@@ -991,7 +991,7 @@ export class ContractRuntime extends Logger {
 
     private generateParams(): ContractParameters {
         return {
-            address: this.p2trAddress,
+            address: this.p2opAddress,
             bytecode: this.bytecode,
             gasMax: this.gasMax,
             gasUsed: this.gasUsed,

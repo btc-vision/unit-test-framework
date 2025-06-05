@@ -1,4 +1,4 @@
-import { Address, AddressMap, EcKeyPair, TapscriptVerificator } from '@btc-vision/transaction';
+import bitcoin, { Network } from '@btc-vision/bitcoin';
 import { Logger } from '@btc-vision/logger';
 import {
     AccountTypeResponse,
@@ -7,7 +7,7 @@ import {
     ContractManager,
     ThreadSafeJsImportResponse,
 } from '@btc-vision/op-vm';
-import bitcoin, { Network } from '@btc-vision/bitcoin';
+import { Address, AddressMap, EcKeyPair, TapscriptVerificator } from '@btc-vision/transaction';
 import crypto from 'crypto';
 import {
     NETWORK,
@@ -19,8 +19,8 @@ import {
 import { ContractRuntime } from '../opnet/modules/ContractRuntime.js';
 import { BytecodeManager } from '../opnet/modules/GetBytecode.js';
 import { RustContractBinding } from '../opnet/vm/RustContractBinding.js';
-import { Transaction } from './Transaction.js';
 import { StateHandler } from '../opnet/vm/StateHandler.js';
+import { Transaction } from './Transaction.js';
 
 class BlockchainBase extends Logger {
     public readonly logColor: string = '#8332ff';
@@ -143,7 +143,7 @@ class BlockchainBase extends Logger {
     public register(contract: ContractRuntime): void {
         if (this.contracts.has(contract.address)) {
             throw new Error(
-                `Contract already registered at address ${contract.address.p2tr(this.network)}`,
+                `Contract already registered at address ${contract.address.p2op(this.network)}`,
             );
         }
 
@@ -153,7 +153,7 @@ class BlockchainBase extends Logger {
     public unregister(contract: ContractRuntime): void {
         if (!this.contracts.has(contract.address)) {
             throw new Error(
-                `Contract not registered at address ${contract.address.p2tr(this.network)}`,
+                `Contract not registered at address ${contract.address.p2op(this.network)}`,
             );
         }
 
