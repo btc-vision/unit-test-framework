@@ -25,6 +25,7 @@
         "exportStart": "start",
         "use": [
             "abort=index/abort"
-        ]
+        ],
+        "transform": "@btc-vision/opnet-transform"
     }
 }
