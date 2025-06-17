@@ -57,16 +57,43 @@ await opnet('Blockchain tests', async (vm: OPNetUnit) => {
         Assert.expect(areBytesEqual(receivedHash, expectedHash)).toEqual(true);
     });
 
-    await vm.it('should return empty value when getting the block hash of a future block', async () => {
-        const blockNumber = Blockchain.blockNumber + 1n;
-        const expectedHash = Buffer.from([
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0,
+    await vm.it(
+        'should return empty value when getting the block hash of a future block',
+        async () => {
+            const blockNumber = Blockchain.blockNumber + 1n;
+            const expectedHash = Buffer.from([
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0,
+            ]);
+
+            const receivedHash = await contract.blockHashCall(blockNumber);
+
+            Assert.expect(areBytesEqual(receivedHash, expectedHash)).toEqual(true);
+        },
+    );
+
+    await vm.it('returns the right chain id', async () => {
+        const expectedChainId = Buffer.from([
+            0x0f, 0x91, 0x88, 0xf1, 0x3c, 0xb7, 0xb2, 0xc7, 0x1f, 0x2a, 0x33, 0x5e, 0x3a, 0x4f,
+            0xc3, 0x28, 0xbf, 0x5b, 0xeb, 0x43, 0x60, 0x12, 0xaf, 0xca, 0x59, 0x0b, 0x1a, 0x11,
+            0x46, 0x6e, 0x22, 0x06,
         ]);
 
-        const receivedHash = await contract.blockHashCall(blockNumber);
+        const receivedChainId = await contract.chainId();
 
-        Assert.expect(areBytesEqual(receivedHash, expectedHash)).toEqual(true);
+        Assert.expect(areBytesEqual(receivedChainId, expectedChainId)).toEqual(true);
+    });
+
+    await vm.it('returns the right protocol id', async () => {
+        const expectedProtocolId = Buffer.from([
+            0xe7, 0x84, 0x99, 0x5a, 0x41, 0x2d, 0x77, 0x39, 0x88, 0xc4, 0xb8, 0xe3, 0x33, 0xd7,
+            0xb3, 0x9d, 0xfb, 0x3c, 0xab, 0xf1, 0x18, 0xd0, 0xd6, 0x45, 0x41, 0x1a, 0x91, 0x6c,
+            0xa2, 0x40, 0x79, 0x39,
+        ]);
+
+        const receivedProtocolId = await contract.protocolId();
+
+        Assert.expect(areBytesEqual(receivedProtocolId, expectedProtocolId)).toEqual(true);
     });
 });
 

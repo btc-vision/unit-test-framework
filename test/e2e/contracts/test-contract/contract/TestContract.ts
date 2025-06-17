@@ -267,6 +267,22 @@ export class TestContract extends OP_NET {
         return result;
     }
 
+    @method()
+    @returns('bytes32')
+    public chainId(_: Calldata): BytesWriter {
+        const result = new BytesWriter(32);
+        result.writeBytes(Blockchain.chainId);
+        return result;
+    }
+
+    @method()
+    @returns('bytes32')
+    public protocolId(_: Calldata): BytesWriter {
+        const result = new BytesWriter(32);
+        result.writeBytes(Blockchain.protocolId);
+        return result;
+    }
+
     @method('uint32')
     @returns('bool')
     public callThenGrowMemory(calldata: Calldata): BytesWriter {
