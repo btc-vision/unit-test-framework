@@ -230,28 +230,28 @@ export class TestContract extends OP_NET {
         return result;
     }
 
-    @method('bytes32', 'bytes32')
-    @returns('bytes32')
-    public tStore(calldata: Calldata): BytesWriter {
-        const key = calldata.readBytes(32);
-        const value = calldata.readBytes(32);
-
-        Blockchain.setTransientStorageAt(key, value);
-        const result = new BytesWriter(32);
-        result.writeBytes(value);
-        return result;
-    }
-
-    @method('bytes32')
-    @returns('bytes32')
-    public tLoad(calldata: Calldata): BytesWriter {
-        const key = calldata.readBytes(32);
-
-        const value = Blockchain.getTransientStorageAt(key);
-        const result = new BytesWriter(32);
-        result.writeBytes(value);
-        return result;
-    }
+    // @method('bytes32', 'bytes32')
+    // @returns('bytes32')
+    // public tStore(calldata: Calldata): BytesWriter {
+    //     const key = calldata.readBytes(32);
+    //     const value = calldata.readBytes(32);
+    //
+    //     Blockchain.setTransientStorageAt(key, value);
+    //     const result = new BytesWriter(32);
+    //     result.writeBytes(value);
+    //     return result;
+    // }
+    //
+    // @method('bytes32')
+    // @returns('bytes32')
+    // public tLoad(calldata: Calldata): BytesWriter {
+    //     const key = calldata.readBytes(32);
+    //
+    //     const value = Blockchain.getTransientStorageAt(key);
+    //     const result = new BytesWriter(32);
+    //     result.writeBytes(value);
+    //     return result;
+    // }
 
     @method('address')
     @returns('uint32')
@@ -270,6 +270,22 @@ export class TestContract extends OP_NET {
         const result = new BytesWriter(32);
         const blockHash = Blockchain.getBlockHash(blockNumber);
         result.writeBytes(blockHash);
+        return result;
+    }
+
+    @method()
+    @returns('bytes32')
+    public chainId(_: Calldata): BytesWriter {
+        const result = new BytesWriter(32);
+        result.writeBytes(Blockchain.chainId);
+        return result;
+    }
+
+    @method()
+    @returns('bytes32')
+    public protocolId(_: Calldata): BytesWriter {
+        const result = new BytesWriter(32);
+        result.writeBytes(Blockchain.protocolId);
         return result;
     }
 

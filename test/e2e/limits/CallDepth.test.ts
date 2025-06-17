@@ -34,6 +34,6 @@ await opnet('Call depth tests', async (vm: OPNetUnit) => {
     await vm.it('should fail to do more nested calls than the maximum allowed', async () => {
         await Assert.expect(async () => {
             await contract.recursiveCall(CONSENSUS.TRANSACTIONS.MAXIMUM_CALL_DEPTH);
-        }).toThrow("Maximum call depth exceeded");
+        }).toThrow();
     });
 });

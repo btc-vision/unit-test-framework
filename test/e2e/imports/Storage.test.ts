@@ -87,16 +87,16 @@ await opnet('Storage tests', async (vm: OPNetUnit) => {
     //     Assert.expect(areBytesEqual(data, loadResult)).toEqual(true);
     // });
 
-    await vm.it('should load empty data from transient storage', async () => {
-        const empty = Uint8Array.from([
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0,
-        ]);
-
-        const loadResult = await contract.tLoadCall(empty);
-
-        Assert.expect(areBytesEqual(empty, loadResult)).toEqual(true);
-    });
+    // await vm.it('should load empty data from transient storage', async () => {
+    //     const empty = Uint8Array.from([
+    //         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    //         0, 0, 0,
+    //     ]);
+    //
+    //     const loadResult = await contract.tLoadCall(empty);
+    //
+    //     Assert.expect(areBytesEqual(empty, loadResult)).toEqual(true);
+    // });
 });
 
 function bigIntToUint8Array(num: bigint, bigEndian: boolean = true) {

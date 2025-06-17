@@ -193,6 +193,8 @@ export class ContractRuntime extends Logger {
             contractDeployer: deployer,
             caller: msgSender,
             origin: txOrigin,
+            chainId: this.getChainId(),
+            protocolId: this.getProtocolId(),
         };
 
         this.contract.setEnvironment(params);
@@ -880,6 +882,32 @@ export class ContractRuntime extends Logger {
             default:
                 throw new Error('Unknown network');
         }
+    }
+
+    private getChainId(): Uint8Array {
+        return Uint8Array.from(Buffer.from(this.getChainIdHex(), 'hex'));
+    }
+
+    private getChainIdHex(): string {
+        switch (this.getNetwork()) {
+            case BitcoinNetworkRequest.Mainnet:
+                return '000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f';
+            case BitcoinNetworkRequest.Testnet:
+                return '000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943';
+            case BitcoinNetworkRequest.Regtest:
+                return '0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206';
+            default:
+                throw new Error('Unknown network');
+        }
+    }
+
+    private getProtocolId(): Uint8Array {
+        return Uint8Array.from(
+            Buffer.from(
+                'e784995a412d773988c4b8e333d7b39dfb3cabf118d0d645411a916ca2407939', // sha256("OP_NET")
+                'hex',
+            ),
+        );
     }
 
     private onEvent(data: Buffer): void {

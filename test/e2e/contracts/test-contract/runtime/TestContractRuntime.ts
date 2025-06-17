@@ -29,6 +29,8 @@ export class TestContractRuntime extends ContractRuntime {
         'callThenModifyState(bytes32,bytes32)',
     );
     private readonly modifyStateSelector: number = this.getSelector('modifyState(bytes32,bytes32)');
+    private readonly chainIdSelector: number = this.getSelector('chainId()');
+    private readonly protocolIdSelector: number = this.getSelector('protocolId()');
 
     public constructor(
         deployer: Address,
@@ -244,6 +246,28 @@ export class TestContractRuntime extends ContractRuntime {
             calldata: calldata.getBuffer(),
         });
         this.handleResponse(response);
+    }
+
+    public async chainId(): Promise<Uint8Array> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.chainIdSelector);
+
+        const response = await this.execute({ calldata: calldata.getBuffer() });
+        this.handleResponse(response);
+
+        const reader = new BinaryReader(response.response);
+        return reader.readBytes(32);
+    }
+
+    public async protocolId(): Promise<Uint8Array> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.protocolIdSelector);
+
+        const response = await this.execute({ calldata: calldata.getBuffer() });
+        this.handleResponse(response);
+
+        const reader = new BinaryReader(response.response);
+        return reader.readBytes(32);
     }
 
     protected handleError(error: Error): Error {
