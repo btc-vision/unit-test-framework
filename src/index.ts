@@ -7,7 +7,7 @@ export * from './blockchain/Blockchain.js';
 export * from './opnet/modules/GetBytecode.js';
 
 /** Example bases */
-export * from './contracts/OP_20.js';
+export * from './contracts/OP20.js';
 
 /** Interfaces */
 export * from './opnet/interfaces/CallResponse.js';

@@ -1,6 +1,6 @@
 import { Address } from '@btc-vision/transaction';
 import { Assert, Blockchain, opnet, OPNetUnit } from '../src';
-import { OP_20 } from '../src/index.js';
+import { OP20 } from '../src';
 
 const rndAddress = Blockchain.generateRandomAddress();
 const receiver: Address = Blockchain.generateRandomAddress();
@@ -11,7 +11,7 @@ await opnet('Compare OP_20 gas usage', async (vm: OPNetUnit) => {
 
     await vm.it('should instantiate an OP_20 token', async () => {
         await Assert.expect(async () => {
-            const token = new OP_20({
+            const token = new OP20({
                 file: 'MyToken',
                 deployer: Blockchain.txOrigin,
                 address: rndAddress,
@@ -26,7 +26,7 @@ await opnet('Compare OP_20 gas usage', async (vm: OPNetUnit) => {
     });
 
     // Declare all the request contracts
-    const token = new OP_20({
+    const token = new OP20({
         file: 'MyToken',
         deployer: Blockchain.txOrigin,
         address: rndAddress,
@@ -63,7 +63,7 @@ await opnet('Compare OP_20 gas usage', async (vm: OPNetUnit) => {
 
     await vm.it('should get the gas of a transfer', async () => {
         const time = Date.now();
-        const transfer = await token.transfer(receiver, rndAddress, 100n);
+        const transfer = await token.safeTransfer(receiver, rndAddress, 100n);
         const elapsed = Date.now() - time;
         const currentGasUsed = 673985327n;
 
