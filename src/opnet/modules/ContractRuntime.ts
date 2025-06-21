@@ -30,6 +30,13 @@ import { AddressStack } from './AddressStack.js';
 import { FastBigIntMap } from './FastMap.js';
 import { BytecodeManager } from './GetBytecode.js';
 
+const PROTOCOL_ID: Uint8Array = Uint8Array.from(
+    Buffer.from(
+        'e784995a412d773988c4b8e333d7b39dfb3cabf118d0d645411a916ca2407939', // sha256("OP_NET")
+        'hex',
+    ),
+);
+
 export class ContractRuntime extends Logger {
     public readonly logColor: string = '#39b2f3';
 
@@ -902,12 +909,7 @@ export class ContractRuntime extends Logger {
     }
 
     private getProtocolId(): Uint8Array {
-        return Uint8Array.from(
-            Buffer.from(
-                'e784995a412d773988c4b8e333d7b39dfb3cabf118d0d645411a916ca2407939', // sha256("OP_NET")
-                'hex',
-            ),
-        );
+        return PROTOCOL_ID;
     }
 
     private onEvent(data: Buffer): void {
