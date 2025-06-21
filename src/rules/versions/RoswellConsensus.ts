@@ -1,7 +1,7 @@
-import { IConsensusRules } from '../IConsensusRules.js';
 import { Consensus } from '@btc-vision/transaction';
+import { IOPNetConsensus } from '../IConsensusRules';
 
-export const RoswellConsensus: IConsensusRules<Consensus.Roswell> = {
+export const RoswellConsensus: IOPNetConsensus<Consensus.Roswell> = {
     /** Information about the consensus */
     CONSENSUS: Consensus.Roswell,
     CONSENSUS_NAME: 'Roswell',
@@ -15,10 +15,10 @@ export const RoswellConsensus: IConsensusRules<Consensus.Roswell> = {
         NEXT_CONSENSUS: Consensus.Rachel,
 
         // The block height at which the next consensus will be enabled.
-        NEXT_CONSENSUS_BLOCK: 100_000_000_000n, //1008n,
+        NEXT_CONSENSUS_BLOCK: 4_506_0830n,
 
         // Is this node updated to the next consensus?
-        IS_READY_FOR_NEXT_CONSENSUS: false,
+        IS_READY_FOR_NEXT_CONSENSUS: true,
 
         // Allow legacy? Hybrid contract address are supported in this version.
         ALLOW_LEGACY: false,
@@ -56,7 +56,7 @@ export const RoswellConsensus: IConsensusRules<Consensus.Roswell> = {
         GAS_PENALTY_FACTOR: 1n,
 
         /** Target block gas limit, a transaction can not pass this limit. */
-        TARGET_GAS: 10_000_000_000_000n, // 0.1 BTC.
+        TARGET_GAS: 4_500_000_000_000n, // 0.025 BTC.
 
         /** Smooth out gas increase when equal to gas target. */
         SMOOTH_OUT_GAS_INCREASE: 1_000_000_000n,
@@ -65,16 +65,16 @@ export const RoswellConsensus: IConsensusRules<Consensus.Roswell> = {
          * Maximum theoretical upper limit, all transactions after this limit will revert for being out of gas.
          * Can overflow up to the value set to TARGET_GAS.
          */
-        MAX_THEORETICAL_GAS: 1_000_000_000_000_000n, // 10 BTC.
+        MAX_THEORETICAL_GAS: 20_000_000_000_000n, // 0.2 BTC
 
         /** Max gas per transactions */
-        TRANSACTION_MAX_GAS: 50_000_000_000_000n, // 0.2 BTC.
+        TRANSACTION_MAX_GAS: 21_000_000_000n, //2_550_000_000_000n, // 0.002 BTC.
 
         /** btc_call maximum gas */
-        EMULATION_MAX_GAS: 50_000_000_000_000n, // 0.2 BTC.
+        EMULATION_MAX_GAS: 20_000_000_000n, // 0.002 BTC.
 
         /** Panic gas cost */
-        PANIC_GAS_COST: 1_000_000n,
+        PANIC_GAS_COST: 100_000_000n,
 
         /** Converts satoshi to BTC */
         SAT_TO_GAS_RATIO: 1_000_000n,
@@ -114,22 +114,45 @@ export const RoswellConsensus: IConsensusRules<Consensus.Roswell> = {
         MAXIMUM_DEPLOYMENT_DEPTH: 2,
 
         /** The maximum amount of calls possible in a transaction */
-        MAXIMUM_CALL_DEPTH: 200,
+        MAXIMUM_CALL_DEPTH: 50, // up to 50 contract call in a single transaction.
 
         /** Check for reentrancy */
         REENTRANCY_GUARD: false,
 
         /** The cost of a byte in gas */
-        STORAGE_COST_PER_BYTE: 10_000n,
-
-        /** The maximum inputs utxos to forward to a contract */
-        MAXIMUM_INPUTS: 250,
-
-        /** The maximum outputs utxos to forward to a contract */
-        MAXIMUM_OUTPUTS: 250,
+        STORAGE_COST_PER_BYTE: 10000n,
 
         /** Skip proof validation for execution before transaction */
         SKIP_PROOF_VALIDATION_FOR_EXECUTION_BEFORE_TRANSACTION: true,
+
+        ENABLE_ACCESS_LIST: false,
+    },
+
+    VM: {
+        CURRENT_DEPLOYMENT_VERSION: 0,
+
+        UTXOS: {
+            /** The maximum inputs utxos to forward to a contract */
+            MAXIMUM_INPUTS: 250,
+
+            /** The maximum outputs utxos to forward to a contract */
+            MAXIMUM_OUTPUTS: 250,
+
+            WRITE_FLAGS: true,
+
+            INPUTS: {
+                WRITE_COINBASE: true,
+            },
+
+            OUTPUTS: {
+                WRITE_SCRIPT_PUB_KEY: true,
+            },
+
+            OP_RETURN: {
+                ENABLED: true,
+                MAXIMUM_SIZE: 80,
+            },
+        },
     },
 
     PSBT: {

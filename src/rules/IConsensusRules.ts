@@ -1,6 +1,6 @@
 import { Consensus } from '@btc-vision/transaction';
 
-export interface IConsensusRules<T extends Consensus> {
+export interface IOPNetConsensus<T extends Consensus> {
     /** Information about the consensus */
     // The consensus type.
     readonly CONSENSUS: T;
@@ -116,17 +116,47 @@ export interface IConsensusRules<T extends Consensus> {
         /** The cost of a byte in gas */
         readonly STORAGE_COST_PER_BYTE: bigint;
 
-        /** The maximum inputs utxos to forward to a contract */
-        readonly MAXIMUM_INPUTS: number;
-
         /** Check for reentrancy */
         readonly REENTRANCY_GUARD: boolean;
 
-        /** The maximum outputs utxos to forward to a contract */
-        readonly MAXIMUM_OUTPUTS: number;
-
         /** Skip proof validation for execution before transaction */
         readonly SKIP_PROOF_VALIDATION_FOR_EXECUTION_BEFORE_TRANSACTION: boolean;
+
+        /** Is the access list feature enabled? */
+        readonly ENABLE_ACCESS_LIST: boolean;
+    };
+
+    readonly VM: {
+        readonly CURRENT_DEPLOYMENT_VERSION: number;
+
+        readonly UTXOS: {
+            /** The maximum inputs utxos to forward to a contract */
+            readonly MAXIMUM_INPUTS: number;
+
+            /** The maximum outputs utxos to forward to a contract */
+            readonly MAXIMUM_OUTPUTS: number;
+
+            /** Write input and output flags to the transaction. */
+            readonly WRITE_FLAGS: boolean;
+
+            readonly INPUTS: {
+                /** Write coinbase to the transaction. */
+                readonly WRITE_COINBASE: boolean;
+            };
+
+            readonly OUTPUTS: {
+                /** Write scriptPubKey to the transaction. */
+                readonly WRITE_SCRIPT_PUB_KEY: boolean;
+            };
+
+            readonly OP_RETURN: {
+                /** Enable OP_RETURN outputs */
+                readonly ENABLED: boolean;
+
+                /** The maximum size of an OP_RETURN output in bytes */
+                readonly MAXIMUM_SIZE: number;
+            };
+        };
     };
 
     readonly NETWORK: {
@@ -143,3 +173,7 @@ export interface IConsensusRules<T extends Consensus> {
         readonly MINIMAL_PSBT_ACCEPTANCE_FEE_VB_PER_SAT: bigint;
     };
 }
+
+export type IOPNetConsensusObj = {
+    [key in Consensus]?: IOPNetConsensus<key>;
+};
