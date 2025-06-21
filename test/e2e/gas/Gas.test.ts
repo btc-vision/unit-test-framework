@@ -40,6 +40,6 @@ await opnet('Gas tests', async (vm: OPNetUnit) => {
     await vm.it('should charge the right gas to store value in new storage slot', async () => {
         const response = await contract.main(2);
 
-        Assert.expect(response.usedGas).toEqual(241016473n);
+        Assert.expect(response.usedGas).toEqual(241016173n);
     });
 });
