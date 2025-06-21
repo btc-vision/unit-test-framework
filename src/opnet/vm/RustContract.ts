@@ -3,14 +3,13 @@ import {
     ContractManager,
     EnvironmentVariablesRequest,
     ExitDataResponse,
-    init,
 } from '@btc-vision/op-vm';
 
 import { Blockchain } from '../../blockchain/Blockchain.js';
 import { RustContractBinding } from './RustContractBinding.js';
 import { SELECTOR_BYTE_LENGTH, U32_BYTE_LENGTH } from '@btc-vision/transaction';
 
-init();
+//init();
 
 export interface ContractParameters extends Omit<RustContractBinding, 'id'> {
     readonly address: string;
@@ -96,7 +95,9 @@ export class RustContract {
     public static decodeRevertData(revertDataBytes: Uint8Array): Error {
         if (RustContract.startsWithErrorSelector(revertDataBytes)) {
             const decoder = new TextDecoder();
-            const revertMessage = decoder.decode(revertDataBytes.slice(SELECTOR_BYTE_LENGTH + U32_BYTE_LENGTH));
+            const revertMessage = decoder.decode(
+                revertDataBytes.slice(SELECTOR_BYTE_LENGTH + U32_BYTE_LENGTH),
+            );
 
             return new Error(revertMessage);
         } else {
@@ -143,7 +144,7 @@ export class RustContract {
             this.params.memoryPagesUsed,
             this.params.network,
             this.params.isDebugMode,
-            this.params.returnProofs,
+            //this.params.returnProofs,
         );
 
         this._instantiated = true;
