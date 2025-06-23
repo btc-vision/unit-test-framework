@@ -941,7 +941,7 @@ export class ContractRuntime extends Logger {
         const tx = Blockchain.transaction;
 
         if (!tx) {
-            return Promise.resolve(Buffer.alloc(1));
+            return Promise.resolve(Buffer.alloc(2));
         } else {
             if (CONSENSUS.VM.UTXOS.MAXIMUM_INPUTS < tx.inputs.length) {
                 throw new Error('OP_NET: MAXIMUM_INPUTS EXCEEDED');
@@ -955,7 +955,7 @@ export class ContractRuntime extends Logger {
         const tx = Blockchain.transaction;
 
         if (!tx) {
-            return Promise.resolve(Buffer.alloc(1));
+            return Promise.resolve(Buffer.alloc(2));
         } else {
             if (CONSENSUS.VM.UTXOS.MAXIMUM_OUTPUTS < tx.outputs.length) {
                 throw new Error(
