@@ -1,13 +1,22 @@
 {
-    "targets": {
-        "debug": {
-            "outFile": "build/GasTestContract.wasm",
-            "textFile": "build/GasTestContract.wat"
-        }
-    },
-    "options": {
-        "optimizeLevel": 3,
-        "runtime": "stub",
-        "exportStart": "start"
+  "targets": {
+    "debug": {
+      "outFile": "build/GasTestContract.wasm",
+      "textFile": "build/GasTestContract.wat"
     }
+  },
+  "options": {
+    "optimizeLevel": 3,
+    "runtime": "stub",
+    "enable": [
+      "sign-extension",
+      "mutable-globals",
+      "nontrapping-f2i",
+      "bulk-memory",
+      "simd",
+      "reference-types",
+      "multi-value"
+    ],
+    "exportStart": "start"
+  }
 }

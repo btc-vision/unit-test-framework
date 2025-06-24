@@ -14,7 +14,7 @@ import {
     sha256,
 } from '@btc-vision/btc-runtime/runtime/env/global';
 
-/*size = 1048576; // 1 MiB  = 1 048 576 bytes
+/*const ONE_MB: usize = 1048576; // 1 MiB  = 1 048 576 bytes
 
 // Two contiguous 1 MiB heaps
 const src = new StaticArray<u8>(ONE_MB);

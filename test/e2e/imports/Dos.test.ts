@@ -13,7 +13,7 @@ await opnet('Dos tests', async (vm: OPNetUnit) => {
         Blockchain.clearContracts();
         await Blockchain.init();
 
-        contract = new TestContractRuntime(deployerAddress, contractAddress, 15_000_000_000_001n); //150_000_000_000n
+        contract = new TestContractRuntime(deployerAddress, contractAddress, 150_000_000_000n); //15_000_000_000_001n
         Blockchain.register(contract);
         await contract.init();
 
