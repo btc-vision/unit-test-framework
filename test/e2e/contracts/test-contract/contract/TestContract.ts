@@ -14,7 +14,7 @@ import {
     sha256,
 } from '@btc-vision/btc-runtime/runtime/env/global';
 
-const ONE_MB: usize = 1 << 20; // 1 MiB  = 1 048 576 bytes
+/*size = 1048576; // 1 MiB  = 1 048 576 bytes
 
 // Two contiguous 1 MiB heaps
 const src = new StaticArray<u8>(ONE_MB);
@@ -22,7 +22,7 @@ const dst = new StaticArray<u8>(ONE_MB);
 
 // Deterministic pattern → corruption becomes obvious if you inspect
 for (let i: usize = 0; i < ONE_MB; ++i) {
-    unchecked((src[i] = i));
+    unchecked((src[i] = <u8>i));
 }
 
 export function spamMemoryCopy(rounds: u32): void {
@@ -33,9 +33,13 @@ export function spamMemoryCopy(rounds: u32): void {
     for (let n: u32 = 0; n < rounds; ++n) {
         memory.copy(pDst, pSrc, ONE_MB);
     }
+
+    while (true) {
+        memory.fill(pDst, 0, ONE_MB);
+    }
 }
 
-spamMemoryCopy(100000000000);
+spamMemoryCopy(i32.MAX_VALUE);*/
 
 @final
 export class TestContract extends OP_NET {

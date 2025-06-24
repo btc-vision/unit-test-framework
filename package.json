@@ -10,6 +10,7 @@
     "prepublish": "npm run build",
     "test": "npm-run-all build:test-contract test:*",
     "test:blockchain": "tsx test/e2e/imports/Blockchain.test.ts",
+    "test:dos": "tsx test/e2e/imports/Dos.test.ts",
     "test:call-depth": "tsx test/e2e/limits/CallDepth.test.ts",
     "test:gas": "tsx test/e2e/gas/Gas.test.ts",
     "test:memory": "tsx test/e2e/limits/Memory.test.ts",

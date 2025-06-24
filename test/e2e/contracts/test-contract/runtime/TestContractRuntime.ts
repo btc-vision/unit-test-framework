@@ -32,11 +32,7 @@ export class TestContractRuntime extends ContractRuntime {
     private readonly chainIdSelector: number = this.getSelector('chainId()');
     private readonly protocolIdSelector: number = this.getSelector('protocolId()');
 
-    public constructor(
-        deployer: Address,
-        address: Address,
-        gasLimit: bigint = 100_000_000_000_000_000n,
-    ) {
+    public constructor(deployer: Address, address: Address, gasLimit: bigint = 150_000_000_000n) {
         super({
             address: address,
             deployer: deployer,
