@@ -144,7 +144,7 @@ export class RustContract {
             this.params.memoryPagesUsed,
             this.params.network,
             this.params.isDebugMode,
-            this.params.returnProofs,
+            //this.params.returnProofs,
         );
 
         this._instantiated = true;

@@ -201,6 +201,8 @@ export class ContractRuntime extends Logger {
             contractDeployer: deployer,
             caller: msgSender,
             origin: txOrigin,
+            chainId: this.getChainId(),
+            protocolId: this.getProtocolId(),
         };
 
         this.contract.setEnvironment(params);
