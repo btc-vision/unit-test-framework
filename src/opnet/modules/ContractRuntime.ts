@@ -348,7 +348,7 @@ export class ContractRuntime extends Logger {
         this.touchedBlocks = new Set([Blockchain.blockNumber]);
     }
 
-    protected async execute(executionParameters: ExecutionParameters): Promise<CallResponse> {
+    public async execute(executionParameters: ExecutionParameters): Promise<CallResponse> {
         try {
             // Always make sure we don't have dirty states
             this.resetInternalStates();
