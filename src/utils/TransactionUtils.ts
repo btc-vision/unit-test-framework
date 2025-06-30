@@ -5,13 +5,13 @@ import {
     TransactionOutput,
 } from '../blockchain/Transaction.js';
 
-export function generateEmptyTransaction(): Transaction {
+export function generateEmptyTransaction(addDefault: boolean = true): Transaction {
     const txId = generateTransactionId();
 
     const inputs: TransactionInput[] = [];
     const outputs: TransactionOutput[] = [];
 
-    return new Transaction(txId, inputs, outputs);
+    return new Transaction(txId, inputs, outputs, addDefault);
 }
 
 export function gas2Sat(gas: bigint): bigint {

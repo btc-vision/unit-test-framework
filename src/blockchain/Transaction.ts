@@ -65,6 +65,7 @@ export class Transaction {
         public readonly id: Uint8Array,
         public readonly inputs: TransactionInput[],
         public readonly outputs: TransactionOutput[],
+        addDefault: boolean = true,
     ) {
         // Simulate opnet behavior
         const opnetInput = new TransactionInput({
@@ -76,14 +77,18 @@ export class Transaction {
 
         this.inputs = [opnetInput, ...inputs];
 
-        const opnetOutput = new TransactionOutput({
-            index: 0,
-            to: 'OP_NET',
-            value: 0n,
-            flags: TransactionOutputFlags.hasTo,
-        });
+        if (addDefault) {
+            const opnetOutput = new TransactionOutput({
+                index: 0,
+                to: 'OP_NET',
+                value: 0n,
+                flags: TransactionOutputFlags.hasTo,
+            });
 
-        this.outputs = [opnetOutput, ...outputs];
+            this.outputs.push(opnetOutput);
+        }
+
+        this.outputs.push(...outputs);
     }
 
     public addOutput(value: bigint, receiver: string | undefined, scriptPubKey?: Uint8Array): void {
