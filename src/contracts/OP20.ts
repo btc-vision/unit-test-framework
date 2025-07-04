@@ -130,12 +130,18 @@ export class OP20 extends ContractRuntime {
         });
     }
 
-    public async safeTransferFrom(from: Address, to: Address, amount: bigint): Promise<void> {
+    public async safeTransferFrom(
+        from: Address,
+        to: Address,
+        amount: bigint,
+        data = new Uint8Array(),
+    ): Promise<void> {
         const calldata = new BinaryWriter();
         calldata.writeSelector(this.safeTransferFromSelector);
         calldata.writeAddress(from);
         calldata.writeAddress(to);
         calldata.writeU256(amount);
+        calldata.writeBytes(data);
 
         const buf = calldata.getBuffer();
         await this.executeThrowOnError({
@@ -194,7 +200,11 @@ export class OP20 extends ContractRuntime {
         }
     }
 
-    public async increaseAllowance(owner: Address, spender: Address, amount: bigint): Promise<CallResponse> {
+    public async increaseAllowance(
+        owner: Address,
+        spender: Address,
+        amount: bigint,
+    ): Promise<CallResponse> {
         const calldata = new BinaryWriter();
         calldata.writeSelector(this.increaseAllowanceSelector);
         calldata.writeAddress(spender);
@@ -208,7 +218,11 @@ export class OP20 extends ContractRuntime {
         });
     }
 
-    public async decreaseAllowance(owner: Address, spender: Address, amount: bigint): Promise<CallResponse> {
+    public async decreaseAllowance(
+        owner: Address,
+        spender: Address,
+        amount: bigint,
+    ): Promise<CallResponse> {
         const calldata = new BinaryWriter();
         calldata.writeSelector(this.decreaseAllowanceSelector);
         calldata.writeAddress(spender);
@@ -222,11 +236,17 @@ export class OP20 extends ContractRuntime {
         });
     }
 
-    public async safeTransfer(from: Address, to: Address, amount: bigint): Promise<CallResponse> {
+    public async safeTransfer(
+        from: Address,
+        to: Address,
+        amount: bigint,
+        data = new Uint8Array(),
+    ): Promise<CallResponse> {
         const calldata = new BinaryWriter();
         calldata.writeSelector(this.safeTransferSelector);
         calldata.writeAddress(to);
         calldata.writeU256(amount);
+        calldata.writeBytes(data);
 
         const buf = calldata.getBuffer();
         return await this.executeThrowOnError({
