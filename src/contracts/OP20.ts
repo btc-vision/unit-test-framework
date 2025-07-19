@@ -5,18 +5,20 @@ import { Blockchain } from '../blockchain/Blockchain.js';
 import { CallResponse } from '../opnet/interfaces/CallResponse.js';
 import { ContractDetails } from '../opnet/interfaces/ContractDetails.js';
 
-export interface TransferEvent {
+export interface TransferredEvent {
+    readonly operator: Address;
     readonly from: Address;
     readonly to: Address;
     readonly value: bigint;
 }
 
-export interface MintEvent {
+export interface MintedEvent {
     readonly to: Address;
     readonly value: bigint;
 }
 
-export interface BurnEvent {
+export interface BurnedEvent {
+    readonly from: Address;
     readonly value: bigint;
 }
 
@@ -71,23 +73,25 @@ export class OP20 extends ContractRuntime {
         this.decimals = details.decimals;
     }
 
-    public static decodeBurnEvent(data: Buffer | Uint8Array): BurnEvent {
+    public static decodeBurnedEvent(data: Buffer | Uint8Array): BurnedEvent {
         const reader = new BinaryReader(data);
+        const from = reader.readAddress();
         const value = reader.readU256();
 
-        return { value };
+        return { from, value };
     }
 
-    public static decodeTransferEvent(data: Buffer | Uint8Array): TransferEvent {
+    public static decodeTransferredEvent(data: Buffer | Uint8Array): TransferredEvent {
         const reader = new BinaryReader(data);
+        const operator = reader.readAddress();
         const from = reader.readAddress();
         const to = reader.readAddress();
         const value = reader.readU256();
 
-        return { from, to, value };
+        return { operator, from, to, value };
     }
 
-    public static decodeMintEvent(data: Buffer | Uint8Array): MintEvent {
+    public static decodeMintedEvent(data: Buffer | Uint8Array): MintedEvent {
         const reader = new BinaryReader(data);
         const to = reader.readAddress();
         const value = reader.readU256();
@@ -141,7 +145,7 @@ export class OP20 extends ContractRuntime {
         calldata.writeAddress(from);
         calldata.writeAddress(to);
         calldata.writeU256(amount);
-        calldata.writeBytes(data);
+        calldata.writeBytesWithLength(data);
 
         const buf = calldata.getBuffer();
         await this.executeThrowOnError({
@@ -246,7 +250,7 @@ export class OP20 extends ContractRuntime {
         calldata.writeSelector(this.safeTransferSelector);
         calldata.writeAddress(to);
         calldata.writeU256(amount);
-        calldata.writeBytes(data);
+        calldata.writeBytesWithLength(data);
 
         const buf = calldata.getBuffer();
         return await this.executeThrowOnError({
