@@ -9,6 +9,7 @@ import {
     NEW_STORAGE_SLOT_GAS_COST,
     UPDATED_STORAGE_SLOT_GAS_COST,
 } from '@btc-vision/op-vm';
+
 import {
     ABICoder,
     Address,
@@ -29,6 +30,13 @@ import { StateHandler } from '../vm/StateHandler.js';
 import { AddressStack } from './AddressStack.js';
 import { FastBigIntMap } from './FastMap.js';
 import { BytecodeManager } from './GetBytecode.js';
+
+const PROTOCOL_ID: Uint8Array = Uint8Array.from(
+    Buffer.from(
+        'e784995a412d773988c4b8e333d7b39dfb3cabf118d0d645411a916ca2407939', // sha256("OP_NET")
+        'hex',
+    ),
+);
 
 export class ContractRuntime extends Logger {
     public readonly logColor: string = '#39b2f3';
@@ -340,7 +348,7 @@ export class ContractRuntime extends Logger {
         this.touchedBlocks = new Set([Blockchain.blockNumber]);
     }
 
-    protected async execute(executionParameters: ExecutionParameters): Promise<CallResponse> {
+    public async execute(executionParameters: ExecutionParameters): Promise<CallResponse> {
         try {
             // Always make sure we don't have dirty states
             this.resetInternalStates();
@@ -902,12 +910,7 @@ export class ContractRuntime extends Logger {
     }
 
     private getProtocolId(): Uint8Array {
-        return Uint8Array.from(
-            Buffer.from(
-                'e784995a412d773988c4b8e333d7b39dfb3cabf118d0d645411a916ca2407939', // sha256("OP_NET")
-                'hex',
-            ),
-        );
+        return PROTOCOL_ID;
     }
 
     private onEvent(data: Buffer): void {
@@ -938,9 +941,9 @@ export class ContractRuntime extends Logger {
         const tx = Blockchain.transaction;
 
         if (!tx) {
-            return Promise.resolve(Buffer.alloc(1));
+            return Promise.resolve(Buffer.alloc(2));
         } else {
-            if (CONSENSUS.TRANSACTIONS.MAXIMUM_INPUTS < tx.inputs.length) {
+            if (CONSENSUS.VM.UTXOS.MAXIMUM_INPUTS < tx.inputs.length) {
                 throw new Error('OP_NET: MAXIMUM_INPUTS EXCEEDED');
             }
 
@@ -952,11 +955,11 @@ export class ContractRuntime extends Logger {
         const tx = Blockchain.transaction;
 
         if (!tx) {
-            return Promise.resolve(Buffer.alloc(1));
+            return Promise.resolve(Buffer.alloc(2));
         } else {
-            if (CONSENSUS.TRANSACTIONS.MAXIMUM_OUTPUTS < tx.outputs.length) {
+            if (CONSENSUS.VM.UTXOS.MAXIMUM_OUTPUTS < tx.outputs.length) {
                 throw new Error(
-                    `OP_NET: MAXIMUM_OUTPUTS EXCEEDED ${CONSENSUS.TRANSACTIONS.MAXIMUM_OUTPUTS} < ${tx.outputs.length}`,
+                    `OP_NET: MAXIMUM_OUTPUTS EXCEEDED ${CONSENSUS.VM.UTXOS.MAXIMUM_OUTPUTS} < ${tx.outputs.length}`,
                 );
             }
 

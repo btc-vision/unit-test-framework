@@ -7,169 +7,39 @@ import {
     encodeSelector,
     OP_NET,
 } from '@btc-vision/btc-runtime/runtime';
-import { Atomics, callContract, getCallResult, ripemd160, sha256 } from '@btc-vision/btc-runtime/runtime/env/global';
+import {
+    callContract,
+    getCallResult,
+    ripemd160,
+    sha256,
+} from '@btc-vision/btc-runtime/runtime/env/global';
 
+/*const ONE_MB: usize = 1048576; // 1 MiB  = 1 048 576 bytes
 
-// @ts-ignore
-@inline
-function blackhole<T>(_x: T): void {
+// Two contiguous 1 MiB heaps
+const src = new StaticArray<u8>(ONE_MB);
+const dst = new StaticArray<u8>(ONE_MB);
+
+// Deterministic pattern → corruption becomes obvious if you inspect
+for (let i: usize = 0; i < ONE_MB; ++i) {
+    unchecked((src[i] = <u8>i));
 }
 
-function TEST_E(): void {
-    const blocks = new Array<ArrayBuffer>();
-    while (true) blocks.push(new ArrayBuffer(1 << 16));
-}
+export function spamMemoryCopy(rounds: u32): void {
+    // Pound the bulk-memory instruction
+    const pSrc = changetype<usize>(src);
+    const pDst = changetype<usize>(dst);
 
-function TEST_F(): void {
-    const funcs = new Array<() => void>();
+    for (let n: u32 = 0; n < rounds; ++n) {
+        memory.copy(pDst, pSrc, ONE_MB);
+    }
+
     while (true) {
-        funcs.push(TEST_F);
+        memory.fill(pDst, 0, ONE_MB);
     }
 }
 
-function TEST_G(): void {
-    const p: usize = memory.data(4);
-    atomic.store<i32>(p, 0);
-
-    const proof = new Uint8Array(192);
-    const verifier = new Uint8Array(492);
-    const result = Atomics.wait32(p, 0, <i64>0x7fff_ffff_ffff_ffff, proof, verifier); // let's wait 292 years
-
-    if (result === Atomics.OK) {
-        Blockchain.log('TEST_G: Atomics.wait32 returned OK');
-    }
-
-    if (result === Atomics.FAULT) {
-        Blockchain.log('TEST_G: Atomics.wait32 returned FAULT');
-    }
-
-    if (result === Atomics.TIMED_OUT) {
-        Blockchain.log('TEST_G: Atomics.wait32 returned TIMEOUT');
-    }
-
-    if (result === Atomics.NOT_EQUAL) {
-        Blockchain.log('TEST_G: Atomics.wait32 returned NOT_EQUAL');
-    }
-}
-
-function TEST_H(): void {
-    const dst = memory.data(1 << 20);
-    while (true) memory.fill(dst, 0, 1 << 20);
-}
-
-type Fn = () => void;
-
-function PONG(): void {
-    (PING as Fn)();
-}
-
-function PING(): void {
-    (PONG as Fn)();
-}
-
-function TEST_J(): void {
-    PING();
-}
-
-function TEST_K(): void {
-    let x: f64 = NaN;
-    while (!isNaN(x)) x *= 1.0001;
-}
-
-function TEST_L(): void {
-    let v = v128.splat<i8>(1);      // lane type = i8
-    while (true) {
-        v = v128.add<i8>(v, v);       // use the same lane type here
-    }
-    blackhole(v);
-}
-
-function boom(): never {
-    throw new Error('trap');
-}
-
-function TEST_M(): void {
-    try {
-        boom();
-    } catch (err) {
-        TEST_M();
-    }
-}
-
-function TEST_N(): void {
-    for (; ;) {
-    }
-}
-
-function TEST_O(): void {
-    let x = 1;
-    while (true) {
-        try {
-            blackhole(x / (x - 1));
-        } catch (err) {
-        }
-    }
-}
-
-function TEST_P(): void {
-    const a = v128.splat<i32>(0);
-    let b = a;
-    for (; ;) {
-        b = v128.relaxed_madd<i32>(a, b, a); // potential consensus hazard
-    }
-}
-
-function fingerprint(iterations: i32): i64 {
-    const vecA: v128 = f32x4.splat(1.337);
-    const vecB: v128 = f32x4.splat(-3.1415);
-    let acc: v128 = f32x4.splat(0.0);
-
-    for (let i = 0; i < iterations; ++i) {
-        // create a varying vector
-        const ints: v128 = i32x4.splat(i);
-        const floats: v128 = f32x4.convert_i32x4_s(ints);
-
-        // relaxed-deterministic, hardware-driven ops
-        const m = v128.relaxed_min<f32>(floats, vecA); // f32x4.relaxed_min
-        const mx = v128.relaxed_max<f32>(m, vecB);   // f32x4.relaxed_max
-        acc = f32x4.add(acc, mx);
-    }
-
-    // reduce four lanes → single 64-bit hash
-    const h0 = reinterpret<i32>(f32x4.extract_lane(acc, 0));
-    const h1 = reinterpret<i32>(f32x4.extract_lane(acc, 1));
-    const h2 = reinterpret<i32>(f32x4.extract_lane(acc, 2));
-    const h3 = reinterpret<i32>(f32x4.extract_lane(acc, 3));
-
-    return ((h0 ^ h1) as i64) << 32 | (((h2 ^ h3) as i64) & 0xFFFF_FFFF);
-}
-
-@inline
-function spin(cb: () => void): void {
-    while (true) cb();
-}
-
-export function spin_fill0(): void {
-    const dst: usize = 0;
-    spin(() => memory.fill(dst, 0, 0));
-}
-
-function spin_copy0(): void {
-    spin(() => memory.copy(4, 0, 0));
-}
-
-const SEG: u32 = <u32>memory.data<u8>([
-    0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
-    0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
-]);
-
-function spin_init0(): void {
-    spin(() => memory.init(SEG, 0, 0, 0));
-}
-
-function spin_init256(): void {
-    spin(() => memory.init(SEG, 0, 0, 256));
-}
+spamMemoryCopy(i32.MAX_VALUE);*/
 
 @final
 export class TestContract extends OP_NET {
