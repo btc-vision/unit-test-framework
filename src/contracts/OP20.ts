@@ -22,6 +22,12 @@ export interface BurnedEvent {
     readonly value: bigint;
 }
 
+export interface ApprovedEvent {
+    readonly owner: Address;
+    readonly spender: Address;
+    readonly value: bigint;
+}
+
 export interface OP20Interface extends ContractDetails {
     readonly file: string;
     readonly decimals: number;
@@ -42,6 +48,7 @@ export class OP20 extends ContractRuntime {
     protected readonly mintSelector: number = Number(
         `0x${this.abiCoder.encodeSelector('mint(address,uint256)')}`,
     );
+
     protected readonly balanceOfSelector: number = Number(
         `0x${this.abiCoder.encodeSelector('balanceOf(address)')}`,
     );
@@ -58,12 +65,36 @@ export class OP20 extends ContractRuntime {
         `0x${this.abiCoder.encodeSelector('decreaseAllowance(address,uint256)')}`,
     );
 
+    protected readonly increaseAllowanceBySignatureSelector: number = Number(
+        `0x${this.abiCoder.encodeSelector('increaseAllowanceBySignature(address,address,uint256,uint64,bytes)')}`,
+    );
+
+    protected readonly decreaseAllowanceBySignatureSelector: number = Number(
+        `0x${this.abiCoder.encodeSelector('decreaseAllowanceBySignature(address,address,uint256,uint64,bytes)')}`,
+    );
+
     protected readonly airdropSelector: number = Number(
         `0x${this.abiCoder.encodeSelector('airdrop(tuple(address,uint256))')}`,
     );
 
     protected readonly allowanceSelector: number = Number(
         `0x${this.abiCoder.encodeSelector('allowance(address,address)')}`,
+    );
+
+    protected readonly burnSelector: number = Number(
+        `0x${this.abiCoder.encodeSelector('burn(uint256)')}`,
+    );
+
+    protected readonly nonceOfSelector: number = Number(
+        `0x${this.abiCoder.encodeSelector('nonceOf(address)')}`,
+    );
+
+    protected readonly metadataSelector: number = Number(
+        `0x${this.abiCoder.encodeSelector('metadata()')}`,
+    );
+
+    protected readonly domainSeparatorSelector: number = Number(
+        `0x${this.abiCoder.encodeSelector('domainSeparator()')}`,
     );
 
     constructor(details: OP20Interface) {
@@ -97,6 +128,15 @@ export class OP20 extends ContractRuntime {
         const value = reader.readU256();
 
         return { to, value };
+    }
+
+    public static decodeApprovedEvent(data: Buffer | Uint8Array): ApprovedEvent {
+        const reader = new BinaryReader(data);
+        const owner = reader.readAddress();
+        const spender = reader.readAddress();
+        const value = reader.readU256();
+
+        return { owner, spender, value };
     }
 
     public async totalSupply(): Promise<bigint> {
@@ -240,6 +280,52 @@ export class OP20 extends ContractRuntime {
         });
     }
 
+    public async increaseAllowanceBySignature(
+        owner: Address,
+        spender: Address,
+        amount: bigint,
+        deadline: bigint,
+        signature: Uint8Array,
+    ): Promise<CallResponse> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.increaseAllowanceBySignatureSelector);
+        calldata.writeAddress(owner);
+        calldata.writeAddress(spender);
+        calldata.writeU256(amount);
+        calldata.writeU64(deadline);
+        calldata.writeBytesWithLength(signature);
+
+        const buf = calldata.getBuffer();
+        return await this.executeThrowOnError({
+            calldata: buf,
+            sender: this.deployer,
+            txOrigin: this.deployer,
+        });
+    }
+
+    public async decreaseAllowanceBySignature(
+        owner: Address,
+        spender: Address,
+        amount: bigint,
+        deadline: bigint,
+        signature: Uint8Array,
+    ): Promise<CallResponse> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.decreaseAllowanceBySignatureSelector);
+        calldata.writeAddress(owner);
+        calldata.writeAddress(spender);
+        calldata.writeU256(amount);
+        calldata.writeU64(deadline);
+        calldata.writeBytesWithLength(signature);
+
+        const buf = calldata.getBuffer();
+        return await this.executeThrowOnError({
+            calldata: buf,
+            sender: this.deployer,
+            txOrigin: this.deployer,
+        });
+    }
+
     public async safeTransfer(
         from: Address,
         to: Address,
@@ -251,6 +337,19 @@ export class OP20 extends ContractRuntime {
         calldata.writeAddress(to);
         calldata.writeU256(amount);
         calldata.writeBytesWithLength(data);
+
+        const buf = calldata.getBuffer();
+        return await this.executeThrowOnError({
+            calldata: buf,
+            sender: from,
+            txOrigin: from,
+        });
+    }
+
+    public async burn(from: Address, amount: bigint): Promise<CallResponse> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.burnSelector);
+        calldata.writeU256(amount);
 
         const buf = calldata.getBuffer();
         return await this.executeThrowOnError({
@@ -280,6 +379,73 @@ export class OP20 extends ContractRuntime {
         const balance = await this.balanceOf(owner);
 
         return Blockchain.decodeFromDecimal(balance, this.decimals);
+    }
+
+    public async nonceOf(owner: Address): Promise<bigint> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.nonceOfSelector);
+        calldata.writeAddress(owner);
+
+        const buf = calldata.getBuffer();
+        const result = await this.executeThrowOnError({
+            calldata: buf,
+            saveStates: false,
+        });
+
+        const reader = new BinaryReader(result.response);
+        return reader.readU256();
+    }
+
+    public async metadata(): Promise<{
+        name: string;
+        symbol: string;
+        decimals: number;
+        totalSupply: bigint;
+        maximumSupply: bigint;
+        icon: string;
+        domainSeparator: Uint8Array;
+    }> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.metadataSelector);
+
+        const buf = calldata.getBuffer();
+        const result = await this.executeThrowOnError({
+            calldata: buf,
+            saveStates: false,
+        });
+
+        const reader = new BinaryReader(result.response);
+        const name = reader.readStringWithLength();
+        const symbol = reader.readStringWithLength();
+        const decimals = reader.readU8();
+        const totalSupply = reader.readU256();
+        const maximumSupply = reader.readU256();
+        const icon = reader.readStringWithLength();
+        const domainSeparator = reader.readBytesWithLength();
+
+        return {
+            name,
+            symbol,
+            decimals,
+            totalSupply,
+            maximumSupply,
+            icon,
+            domainSeparator,
+        };
+    }
+
+    public async domainSeparator(): Promise<Uint8Array> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.domainSeparatorSelector);
+
+        const buf = calldata.getBuffer();
+        const result = await this.executeThrowOnError({
+            calldata: buf,
+            saveStates: false,
+        });
+
+        const reader = new BinaryReader(result.response);
+        return reader.readBytes(32);
     }
 
     protected defineRequiredBytecodes(): void {
