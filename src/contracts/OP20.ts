@@ -33,6 +33,16 @@ export interface OP20Interface extends ContractDetails {
     readonly decimals: number;
 }
 
+export interface OP20Metadata {
+    readonly name: string;
+    readonly symbol: string;
+    readonly decimals: number;
+    readonly totalSupply: bigint;
+    readonly maximumSupply: bigint;
+    readonly icon: string;
+    readonly domainSeparator: Uint8Array;
+}
+
 export class OP20 extends ContractRuntime {
     public readonly file: string;
     public readonly decimals: number;
@@ -397,13 +407,8 @@ export class OP20 extends ContractRuntime {
     }
 
     public async metadata(): Promise<{
-        name: string;
-        symbol: string;
-        decimals: number;
-        totalSupply: bigint;
-        maximumSupply: bigint;
-        icon: string;
-        domainSeparator: Uint8Array;
+        metadata: OP20Metadata;
+        response: CallResponse;
     }> {
         const calldata = new BinaryWriter();
         calldata.writeSelector(this.metadataSelector);
@@ -423,7 +428,7 @@ export class OP20 extends ContractRuntime {
         const icon = reader.readStringWithLength();
         const domainSeparator = reader.readBytesWithLength();
 
-        return {
+        const data: OP20Metadata = {
             name,
             symbol,
             decimals,
@@ -431,6 +436,11 @@ export class OP20 extends ContractRuntime {
             maximumSupply,
             icon,
             domainSeparator,
+        };
+
+        return {
+            metadata: data,
+            response: result,
         };
     }
 
