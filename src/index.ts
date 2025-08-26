@@ -8,6 +8,8 @@ export * from './opnet/modules/GetBytecode.js';
 
 /** Example bases */
 export * from './contracts/OP20.js';
+export * from './contracts/OP721.js';
+export * from './contracts/OP721Extended.js';
 
 /** Interfaces */
 export * from './opnet/interfaces/CallResponse.js';
