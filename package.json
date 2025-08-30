@@ -35,10 +35,10 @@
         "@btc-vision/bitcoin": "^6.4.8",
         "@btc-vision/logger": "^1.0.6",
         "@btc-vision/op-vm": "^0.5.2",
-        "@btc-vision/transaction": "^1.6.9",
+        "@btc-vision/transaction": "^1.6.10",
         "gulp-logger-new": "^1.0.1",
         "npm-run-all": "^4.1.5",
-        "opnet": "^1.6.18"
+        "opnet": "^1.6.19"
     },
     "devDependencies": {
         "@btc-vision/as-bignum": "^0.0.5",
