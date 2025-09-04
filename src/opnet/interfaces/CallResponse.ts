@@ -9,6 +9,7 @@ export interface ICallResponse {
     callStack: AddressStack;
     touchedAddresses: AddressSet;
     touchedBlocks: Set<bigint>;
+    memoryPagesUsed: bigint;
 }
 
 export class CallResponse {
@@ -19,6 +20,7 @@ export class CallResponse {
     public callStack: AddressStack;
     public touchedAddresses: AddressSet;
     public touchedBlocks: Set<bigint>;
+    public memoryPagesUsed: bigint;
 
     public usedGas: bigint;
 
@@ -31,6 +33,7 @@ export class CallResponse {
         this.touchedBlocks = data.touchedBlocks;
 
         this.usedGas = data.exitData.gasUsed;
+        this.memoryPagesUsed = data.memoryPagesUsed;
 
         if (this.status === 1) {
             this.error = RustContract.decodeRevertData(this.response);

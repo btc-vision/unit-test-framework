@@ -149,6 +149,7 @@ export class ContractRuntime extends Logger {
         this.totalEventLength = override.totalEventLength;
         this.loadedPointers = override.loadedPointers;
         this.storedPointers = override.storedPointers;
+        this.memoryPagesUsed = override.memoryPagesUsed;
     }
 
     public delete(): void {
@@ -243,6 +244,7 @@ export class ContractRuntime extends Logger {
             const newResponse = this.handleError(e as Error);
 
             return new CallResponse({
+                memoryPagesUsed: this.memoryPagesUsed,
                 exitData: {
                     status: 1,
                     gasUsed: this.getGasUsed(), // if we don't do gasMax here and the execution actually used some gas, the user is getting free gas on partial reverts, otherwise rust need to return the real used gas.
@@ -330,24 +332,6 @@ export class ContractRuntime extends Logger {
         }
     }
 
-    protected resetInternalStates(): void {
-        this.gasUsed = 0n;
-
-        StateHandler.resetPendingDeployments();
-        StateHandler.clearTemporaryStates(this.address);
-
-        this.loadedPointers = 0n;
-        this.storedPointers = 0n;
-        this.totalEventLength = 0;
-
-        this.events = [];
-        this.callStack = new AddressStack();
-        this.callStack.push(this.address);
-
-        this.touchedAddresses = new AddressSet([this.address]);
-        this.touchedBlocks = new Set([Blockchain.blockNumber]);
-    }
-
     public async execute(executionParameters: ExecutionParameters): Promise<CallResponse> {
         try {
             // Always make sure we don't have dirty states
@@ -372,11 +356,31 @@ export class ContractRuntime extends Logger {
         }
     }
 
+    protected resetInternalStates(): void {
+        this.gasUsed = 0n;
+        this.memoryPagesUsed = 0n;
+
+        StateHandler.resetPendingDeployments();
+        StateHandler.clearTemporaryStates(this.address);
+
+        this.loadedPointers = 0n;
+        this.storedPointers = 0n;
+        this.totalEventLength = 0;
+
+        this.events = [];
+        this.callStack = new AddressStack();
+        this.callStack.push(this.address);
+
+        this.touchedAddresses = new AddressSet([this.address]);
+        this.touchedBlocks = new Set([Blockchain.blockNumber]);
+    }
+
     protected async executeCall(executionParameters: ExecutionParameters): Promise<CallResponse> {
         // Deploy if not deployed.
         const deployment = await this.deployContract(false);
         if (deployment) {
             this.gasUsed = 0n; // reset.
+            this.memoryPagesUsed = 0n;
 
             if (deployment.status !== 0) {
                 if (this.logUnexpectedErrors) {
@@ -431,6 +435,7 @@ export class ContractRuntime extends Logger {
         }
 
         return new CallResponse({
+            memoryPagesUsed: this.memoryPagesUsed,
             exitData: {
                 ...response,
                 gasUsed: this.gasUsed,
@@ -595,6 +600,7 @@ export class ContractRuntime extends Logger {
                 totalEventLength: this.totalEventLength,
                 storedPointers: this.storedPointers,
                 loadedPointers: this.loadedPointers,
+                memoryPagesUsed: this.memoryPagesUsed,
             };
 
             // Apply states override
@@ -761,6 +767,7 @@ export class ContractRuntime extends Logger {
                 );
             }
 
+            this.memoryPagesUsed = memoryPagesUsed;
             this.callStack.push(contractAddress);
             this.touchedAddresses.add(contractAddress);
 
@@ -790,6 +797,7 @@ export class ContractRuntime extends Logger {
                 totalEventLength: this.totalEventLength,
                 storedPointers: this.storedPointers,
                 loadedPointers: this.loadedPointers,
+                memoryPagesUsed: this.memoryPagesUsed,
             };
 
             // Apply states override
@@ -803,6 +811,7 @@ export class ContractRuntime extends Logger {
                 memoryPagesUsed,
             });
 
+            this.memoryPagesUsed = callResponse.memoryPagesUsed;
             this.gasUsed = callResponse.usedGas;
 
             this.mergeStates(ca);
@@ -841,6 +850,7 @@ export class ContractRuntime extends Logger {
 
         this.loadedPointers = states.loadedPointers;
         this.storedPointers = states.storedPointers;
+        this.memoryPagesUsed = states.memoryPagesUsed;
     }
 
     private buildCallResponse(

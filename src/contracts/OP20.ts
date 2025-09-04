@@ -84,7 +84,7 @@ export class OP20 extends ContractRuntime {
     );
 
     protected readonly airdropSelector: number = Number(
-        `0x${this.abiCoder.encodeSelector('airdrop(tuple(address,uint256))')}`,
+        `0x${this.abiCoder.encodeSelector('airdrop(tuple(address,uint256)[])')}`,
     );
 
     protected readonly allowanceSelector: number = Number(

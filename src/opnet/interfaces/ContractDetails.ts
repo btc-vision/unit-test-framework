@@ -10,6 +10,7 @@ export interface StateOverride {
 
     loadedPointers: bigint;
     storedPointers: bigint;
+    memoryPagesUsed: bigint;
 }
 
 export interface ContractDetails {
