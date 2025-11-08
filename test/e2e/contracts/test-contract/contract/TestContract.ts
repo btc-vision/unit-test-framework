@@ -163,7 +163,7 @@ export class TestContract extends OP_NET {
         growMemoryCalldata.writeU32(pages);
 
         const response = Blockchain.call(this.address, growMemoryCalldata);
-        const success = response.readBoolean();
+        const success = response.data.readBoolean();
 
         const result = new BytesWriter(1);
         result.writeBoolean(success);
