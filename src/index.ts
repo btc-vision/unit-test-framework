@@ -37,3 +37,8 @@ export * from './rules/versions/RoswellConsensus.js';
 export * from './rules/versions/ConsensusMetadata.js';
 
 export * from './utils/TransactionUtils.js';
+
+export * from './mldsa/MLDSAMetadata.js';
+export * from './consensus/ConsensusRules.js';
+export * from './consensus/ConsensusManager.js';
+export * from './blockchain/MLDSAPublicKeyCache.js';

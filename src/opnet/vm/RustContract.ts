@@ -62,6 +62,7 @@ export class RustContract {
                 outputs: this.params.outputs,
                 accountType: this.params.accountType,
                 blockHash: this.params.blockHash,
+                loadMLDSA: this.params.loadMLDSA,
             });
 
             this.instantiate();
@@ -254,7 +255,7 @@ export class RustContract {
         if (this.enableDebug) console.log('Getting error', err);
 
         const msg = err.message;
-        if (msg.includes('Execution reverted') && !msg.includes('Execution reverted:')) {
+        if (msg && msg.includes('Execution reverted') && !msg.includes('Execution reverted:')) {
             return this.getRevertError();
         } else {
             return err;

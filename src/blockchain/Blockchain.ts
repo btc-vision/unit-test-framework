@@ -7,7 +7,7 @@ import {
     ContractManager,
     ThreadSafeJsImportResponse,
 } from '@btc-vision/op-vm';
-import { Address, AddressMap, EcKeyPair, TapscriptVerificator } from '@btc-vision/transaction';
+import { Address, AddressMap, TapscriptVerificator, Wallet } from '@btc-vision/transaction';
 import crypto from 'crypto';
 import {
     NETWORK,
@@ -21,6 +21,8 @@ import { BytecodeManager } from '../opnet/modules/GetBytecode.js';
 import { RustContractBinding } from '../opnet/vm/RustContractBinding.js';
 import { StateHandler } from '../opnet/vm/StateHandler.js';
 import { Transaction } from './Transaction.js';
+import { MLDSAPublicKeyCache } from './MLDSAPublicKeyCache.js';
+import { ConsensusManager } from '../consensus/ConsensusManager.js';
 
 class BlockchainBase extends Logger {
     public readonly logColor: string = '#8332ff';
@@ -31,6 +33,8 @@ class BlockchainBase extends Logger {
     public traceCalls: boolean = TRACE_CALLS;
     public traceDeployments: boolean = TRACE_DEPLOYMENTS;
     public simulateRealEnvironment: boolean = false;
+
+    private readonly addressMLDSACache: MLDSAPublicKeyCache = new MLDSAPublicKeyCache();
 
     private readonly enableDebug: boolean = false;
     private readonly contracts: AddressMap<ContractRuntime> = new AddressMap<ContractRuntime>();
@@ -124,7 +128,16 @@ class BlockchainBase extends Logger {
             this.outputsJSFunction,
             this.accountTypeJSFunction,
             this.blockHashJSFunction,
+            this.loadMLDSAJsFunction,
         );
+    }
+
+    public registerMLDSAPublicKey(address: Address, publicKey: Uint8Array): void {
+        this.addressMLDSACache.set(address, publicKey);
+    }
+
+    public getMLDSAPublicKey(address: Address): Uint8Array | undefined {
+        return this.addressMLDSACache.get(address);
     }
 
     public removeBinding(id: bigint): void {
@@ -135,9 +148,26 @@ class BlockchainBase extends Logger {
         this.bindings.set(binding.id, binding);
     }
 
+    /**
+     * Generate a random address
+     * @returns {Address} The generated address
+     */
     public generateRandomAddress(): Address {
-        const rndKeyPair = EcKeyPair.generateRandomKeyPair(this.network);
-        return new Address(rndKeyPair.publicKey);
+        const rndKeyPair = Wallet.generate(this.network);
+        this.addressMLDSACache.set(rndKeyPair.address, rndKeyPair.quantumPublicKey);
+
+        return rndKeyPair.address;
+    }
+
+    /**
+     * Generate a random wallet
+     * @returns {Wallet} The generated wallet
+     */
+    public generateRandomWallet(): Wallet {
+        const rndKeyPair = Wallet.generate(this.network);
+        this.addressMLDSACache.set(rndKeyPair.address, rndKeyPair.quantumPublicKey);
+
+        return rndKeyPair;
     }
 
     public register(contract: ContractRuntime): void {
@@ -162,6 +192,9 @@ class BlockchainBase extends Logger {
 
     public clearContracts(): void {
         StateHandler.purgeAll();
+        ConsensusManager.default();
+
+        this.addressMLDSACache.clear();
         this.contracts.clear();
     }
 
@@ -322,6 +355,26 @@ class BlockchainBase extends Logger {
         }
 
         return c.store(buf);
+    };
+
+    private loadMLDSAJsFunction: (
+        _: never,
+        result: ThreadSafeJsImportResponse,
+    ) => Promise<Buffer | Uint8Array> = (
+        _: never,
+        value: ThreadSafeJsImportResponse,
+    ): Promise<Buffer | Uint8Array> => {
+        if (this.enableDebug) console.log('LOAD MLDSA', value.buffer);
+
+        const u = new Uint8Array(value.buffer);
+        const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
+        const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
+
+        if (!c) {
+            throw new Error('Binding not found');
+        }
+
+        return c.loadMLDSA(buf);
     };
 
     private callJSFunction: (

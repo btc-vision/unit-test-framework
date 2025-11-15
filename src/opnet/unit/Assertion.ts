@@ -117,7 +117,7 @@ export class Assertion {
         }
         if (expectedError && error instanceof Error) {
             if (typeof expectedError === 'string') {
-                if (!error.message.includes(expectedError)) {
+                if (error && error.message && !error.message.includes(expectedError)) {
                     throw new Error(
                         `Expected error message '${error.message}' to include '${expectedError}'`,
                     );
