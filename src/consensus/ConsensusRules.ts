@@ -72,28 +72,28 @@ export class ConsensusRules {
      * Checks if flag value is set
      */
     public containsFlag(flag: bigint): boolean {
-        return (this.value & flag) == flag;
+        return (this.value & flag) === flag;
     }
 
     /**
      * Checks if any flags in 'other' are set
      */
     public intersects(other: ConsensusRules): boolean {
-        return (this.value & other.value) != 0n;
+        return (this.value & other.value) !== 0n;
     }
 
     /**
      * Checks if any flag value is set
      */
     public intersectsFlag(flag: bigint): boolean {
-        return (this.value & flag) != 0n;
+        return (this.value & flag) !== 0n;
     }
 
     /**
      * Checks if no flags are set
      */
     public isEmpty(): boolean {
-        return this.value == 0n;
+        return this.value === 0n;
     }
 
     /**
@@ -196,14 +196,14 @@ export class ConsensusRules {
     }
 
     /**
-     * Creates a copy of this ConsensusFlags
+     * Creates a copy of this ConsensusRules
      */
     public clone(): ConsensusRules {
         return new ConsensusRules(this.value);
     }
 
     /**
-     * Checks equality with another ConsensusFlags
+     * Checks equality with another ConsensusRules
      */
     public equals(other: ConsensusRules): boolean {
         return this.value == other.value;
@@ -227,6 +227,6 @@ export class ConsensusRules {
     }
 }
 
-export function createConsensusFlags(flags: bigint[]): ConsensusRules {
+export function createConsensusRules(flags: bigint[]): ConsensusRules {
     return ConsensusRules.combine(flags);
 }
