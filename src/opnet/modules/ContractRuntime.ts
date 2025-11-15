@@ -30,6 +30,8 @@ import { StateHandler } from '../vm/StateHandler.js';
 import { AddressStack } from './AddressStack.js';
 import { FastBigIntMap } from './FastMap.js';
 import { BytecodeManager } from './GetBytecode.js';
+import { MLDSAMetadata } from '../../mldsa/MLDSAMetadata.js';
+import { ConsensusManager } from '../../consensus/ConsensusManager.js';
 
 const PROTOCOL_ID: Uint8Array = Uint8Array.from(
     Buffer.from(
@@ -204,6 +206,8 @@ export class ContractRuntime extends Logger {
             origin: txOrigin,
             chainId: this.getChainId(),
             protocolId: this.getProtocolId(),
+            originTweakedPublicKey: txOrigin.tweakedPublicKeyToBuffer(),
+            consensusFlags: ConsensusManager.getFlags(),
         };
 
         this.contract.setEnvironment(params);
@@ -636,7 +640,7 @@ export class ContractRuntime extends Logger {
             }
 
             return this.buildDeployFromAddressResponse(
-                Address.zero(),
+                Address.dead(),
                 0,
                 this.gasUsed,
                 1,
@@ -660,6 +664,30 @@ export class ContractRuntime extends Logger {
         writer.writeBytes(response);
 
         return writer.getBuffer();
+    }
+
+    private loadMLDSA(data: Buffer): Buffer | Uint8Array {
+        const reader = new BinaryReader(data);
+        const level = reader.readU8();
+        const address = reader.readAddress();
+
+        const publicKey = Blockchain.getMLDSAPublicKey(address);
+        const mldsaPublicKeyLength = MLDSAMetadata.fromLevel(level) as number;
+        const response = new BinaryWriter();
+
+        let found: boolean = !!publicKey;
+        if (publicKey && publicKey.length !== mldsaPublicKeyLength) {
+            found = false;
+        }
+
+        if (found && publicKey) {
+            response.writeBoolean(true);
+            response.writeBytes(publicKey);
+        } else {
+            response.writeBoolean(false);
+        }
+
+        return response.getBuffer();
     }
 
     private load(data: Buffer): Buffer | Uint8Array {
@@ -739,7 +767,7 @@ export class ContractRuntime extends Logger {
             return;
         }
 
-        if (this.callStack.includes(this.address)) {
+        if (this.callStack && this.callStack.includes(this.address)) {
             throw new Error('OP_NET: Reentrancy detected.');
         }
     }
@@ -1089,6 +1117,16 @@ export class ContractRuntime extends Logger {
             outputs: this.onOutputsRequested.bind(this),
             accountType: this.getAccountType.bind(this),
             blockHash: this.getBlockHash.bind(this),
+            loadMLDSA: (data: Buffer) => {
+                return new Promise((resolve) => {
+                    if (Blockchain.simulateRealEnvironment) {
+                        this.fakeLoad();
+                        resolve(this.loadMLDSA(data));
+                    } else {
+                        resolve(this.loadMLDSA(data));
+                    }
+                });
+            },
         };
     }
 }
