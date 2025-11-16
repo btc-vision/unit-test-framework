@@ -28,7 +28,7 @@ await opnet('Hash tests', async (vm: OPNetUnit) => {
 
     await vm.it('Should sign and verify MLDSA message', async () => {
         const wallet = Blockchain.generateRandomWallet();
-        vm.log(
+        vm.info(
             `Using wallet address: ${wallet.address.toHex()} | Public Key: ${wallet.quantumPublicKeyHex}`,
         );
 
@@ -36,7 +36,7 @@ await opnet('Hash tests', async (vm: OPNetUnit) => {
         message.writeString('Hello, world! This is a test message for MLDSA signing.');
 
         const signature = MessageSigner.signMLDSAMessage(wallet.mldsaKeypair, message.getBuffer());
-        vm.log(
+        vm.info(
             `Generated MLDSA signature: ${Buffer.from(signature.signature).toString('hex')} | Security Level: ${signature.securityLevel}`,
         );
 
