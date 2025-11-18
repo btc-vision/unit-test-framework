@@ -108,6 +108,10 @@ class BlockchainBase extends Logger {
     }
 
     public set txOrigin(from: Address) {
+        if (!from.tweakedPublicKeyToBuffer()) {
+            throw new Error('txOrigin cannot be a contract address');
+        }
+
         this._txOrigin = from;
     }
 

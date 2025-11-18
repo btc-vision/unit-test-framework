@@ -17,6 +17,7 @@ import {
     AddressSet,
     BinaryReader,
     BinaryWriter,
+    Map,
     NetEvent,
 } from '@btc-vision/transaction';
 import crypto from 'crypto';
@@ -27,7 +28,6 @@ import { ContractDetails, StateOverride } from '../interfaces/ContractDetails.js
 import { ExecutionParameters } from '../interfaces/ExecuteParameters.js';
 import { ContractParameters, RustContract } from '../vm/RustContract.js';
 import { StateHandler } from '../vm/StateHandler.js';
-import { FastBigIntMap } from './FastMap.js';
 import { BytecodeManager } from './GetBytecode.js';
 import { MLDSAMetadata } from '../../mldsa/MLDSAMetadata.js';
 import { ConsensusManager } from '../../consensus/ConsensusManager.js';
@@ -52,9 +52,9 @@ export class ContractRuntime extends Logger {
     // global states
     public address: Address;
     public readonly deployer: Address;
-    protected transient: FastBigIntMap = new FastBigIntMap();
-    protected states: FastBigIntMap = new FastBigIntMap();
-    protected deploymentStates: FastBigIntMap = new FastBigIntMap();
+    protected transient: Map<bigint, bigint> = new Map<bigint, bigint>();
+    protected states: Map<bigint, bigint> = new Map<bigint, bigint>();
+    protected deploymentStates: Map<bigint, bigint> = new Map<bigint, bigint>();
 
     // internal states
     protected events: NetEvent[] = [];
@@ -68,7 +68,7 @@ export class ContractRuntime extends Logger {
     private callStack: AddressStack = new AddressStack();
     private touchedAddresses: AddressSet = new AddressSet();
     private touchedBlocks: Set<bigint> = new Set();
-    private statesBackup: FastBigIntMap = new FastBigIntMap();
+    private statesBackup: Map<bigint, bigint> = new Map<bigint, bigint>();
     private totalEventLength: number = 0;
 
     // global states
@@ -214,7 +214,7 @@ export class ContractRuntime extends Logger {
     }
 
     public backupStates(): void {
-        this.statesBackup = new FastBigIntMap(StateHandler.getTemporaryStates(this.address));
+        this.statesBackup = new Map<bigint, bigint>(StateHandler.getTemporaryStates(this.address));
     }
 
     public restoreStates(): void {
@@ -241,7 +241,7 @@ export class ContractRuntime extends Logger {
         } catch (e) {
             if (this.logUnexpectedErrors) {
                 this.warn(
-                    `(debug on call ${BytecodeManager.getFileName(this.address)}) call failed with error: ${(e as Error).message}`,
+                    `(debug on call ${BytecodeManager.getFileName(this.address)}) call failed with error: ${(e as Error).stack}`,
                 );
             }
 

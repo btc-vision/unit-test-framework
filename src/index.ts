@@ -29,8 +29,6 @@ export * from './opnet/vm/RustContractBinding.js';
 export * from './opnet/modules/ContractRuntime.js';
 export * from './blockchain/Transaction.js';
 
-export * from './opnet/modules/FastMap.js';
-
 export * from './opnet/vm/StateHandler.js';
 export * from './rules/IConsensusRules.js';
 export * from './rules/versions/RoswellConsensus.js';
@@ -42,3 +40,5 @@ export * from './mldsa/MLDSAMetadata.js';
 export * from './consensus/ConsensusRules.js';
 export * from './consensus/ConsensusManager.js';
 export * from './blockchain/MLDSAPublicKeyCache.js';
+
+export * from './bench.js';
