@@ -1,9 +1,9 @@
 export class FastBigIntMap {
-    private items: Map<bigint, bigint>;
+    private items: Record<string, bigint>;
     private keyOrder: bigint[];
 
     constructor(iterable?: ReadonlyArray<readonly [bigint, bigint]> | null | FastBigIntMap) {
-        this.items = new Map();
+        this.items = {};
         this.keyOrder = [];
 
         if (iterable instanceof FastBigIntMap) {
@@ -22,7 +22,7 @@ export class FastBigIntMap {
     }
 
     public setAll(map: FastBigIntMap): void {
-        this.items = new Map(map.items);
+        this.items = { ...map.items };
         this.keyOrder = [...map.keyOrder];
     }
 
@@ -33,23 +33,28 @@ export class FastBigIntMap {
     }
 
     set(key: bigint, value: bigint): this {
-        if (!this.items.has(key)) {
+        const keyStr = key.toString();
+        if (!this.has(key)) {
             this.keyOrder.push(key);
         }
-        this.items.set(key, value);
+        this.items[keyStr] = value;
         return this;
     }
 
     get(key: bigint): bigint | undefined {
-        return this.items.get(key);
+        return this.items[key.toString()];
     }
 
     has(key: bigint): boolean {
-        return this.items.has(key);
+        return Object.prototype.hasOwnProperty.call(this.items, key.toString());
     }
 
     delete(key: bigint): boolean {
-        if (this.items.delete(key)) {
+        const keyStr = key.toString();
+        if (this.has(key)) {
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+            delete this.items[keyStr];
+            // Remove from keyOrder
             this.keyOrder = this.keyOrder.filter((k) => k !== key);
             return true;
         }
@@ -57,13 +62,13 @@ export class FastBigIntMap {
     }
 
     clear(): void {
-        this.items.clear();
+        this.items = {};
         this.keyOrder = [];
     }
 
     *entries(): IterableIterator<[bigint, bigint]> {
         for (const key of this.keyOrder) {
-            yield [key, this.items.get(key) as bigint];
+            yield [key, this.items[key.toString()]];
         }
     }
 
@@ -73,7 +78,7 @@ export class FastBigIntMap {
 
     *values(): IterableIterator<bigint> {
         for (const key of this.keyOrder) {
-            yield this.items.get(key) as bigint;
+            yield this.items[key.toString()];
         }
     }
 
@@ -82,7 +87,7 @@ export class FastBigIntMap {
         thisArg?: unknown,
     ): void {
         for (const key of this.keyOrder) {
-            callback.call(thisArg, this.items.get(key) as bigint, key, this);
+            callback.call(thisArg, this.items[key.toString()], key, this);
         }
     }
 

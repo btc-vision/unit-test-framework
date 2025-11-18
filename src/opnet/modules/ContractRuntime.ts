@@ -241,7 +241,7 @@ export class ContractRuntime extends Logger {
         } catch (e) {
             if (this.logUnexpectedErrors) {
                 this.warn(
-                    `(debug on call ${BytecodeManager.getFileName(this.address)}) call failed with error: ${(e as Error).message}`,
+                    `(debug on call ${BytecodeManager.getFileName(this.address)}) call failed with error: ${(e as Error).stack}`,
                 );
             }
 
