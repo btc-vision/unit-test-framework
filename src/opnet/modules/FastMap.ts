@@ -1,9 +1,9 @@
 export class FastBigIntMap {
-    private items: Record<string, bigint>;
+    private items: Map<bigint, bigint>;
     private keyOrder: bigint[];
 
     constructor(iterable?: ReadonlyArray<readonly [bigint, bigint]> | null | FastBigIntMap) {
-        this.items = {};
+        this.items = new Map();
         this.keyOrder = [];
 
         if (iterable instanceof FastBigIntMap) {
@@ -17,15 +17,12 @@ export class FastBigIntMap {
         }
     }
 
-    /**
-     * Number of entries in the map.
-     */
     get size(): number {
         return this.keyOrder.length;
     }
 
     public setAll(map: FastBigIntMap): void {
-        this.items = { ...map.items };
+        this.items = new Map(map.items);
         this.keyOrder = [...map.keyOrder];
     }
 
@@ -35,97 +32,60 @@ export class FastBigIntMap {
         }
     }
 
-    /**
-     * Inserts or updates the key/value. Returns `this` to allow chaining.
-     */
     set(key: bigint, value: bigint): this {
-        const keyStr = key.toString();
-        // If key is new, push to keyOrder
-        if (!this.has(key)) {
+        if (!this.items.has(key)) {
             this.keyOrder.push(key);
         }
-        // Store value in the record
-        this.items[keyStr] = value;
+        this.items.set(key, value);
         return this;
     }
 
-    /**
-     * Retrieves the value for the given key. Returns undefined if key not found.
-     */
     get(key: bigint): bigint | undefined {
-        return this.items[key.toString()];
+        return this.items.get(key);
     }
 
-    /**
-     * Checks if a key exists in the map.
-     */
     has(key: bigint): boolean {
-        return Object.prototype.hasOwnProperty.call(this.items, key.toString());
+        return this.items.has(key);
     }
 
-    /**
-     * Deletes a key if it exists. Returns boolean indicating success.
-     */
     delete(key: bigint): boolean {
-        const keyStr = key.toString();
-        if (this.has(key)) {
-            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-            delete this.items[keyStr];
-            // Remove from keyOrder
+        if (this.items.delete(key)) {
             this.keyOrder = this.keyOrder.filter((k) => k !== key);
             return true;
         }
         return false;
     }
 
-    /**
-     * Removes all keys and values.
-     */
     clear(): void {
-        this.items = {};
+        this.items.clear();
         this.keyOrder = [];
     }
 
-    /**
-     * Iterates over [key, value] pairs in insertion order.
-     */
     *entries(): IterableIterator<[bigint, bigint]> {
         for (const key of this.keyOrder) {
-            yield [key, this.items[key.toString()]];
+            yield [key, this.items.get(key) as bigint];
         }
     }
 
-    /**
-     * Iterates over keys in insertion order.
-     */
     *keys(): IterableIterator<bigint> {
         yield* this.keyOrder;
     }
 
-    /**
-     * Iterates over values in insertion order.
-     */
     *values(): IterableIterator<bigint> {
         for (const key of this.keyOrder) {
-            yield this.items[key.toString()];
+            yield this.items.get(key) as bigint;
         }
     }
 
-    /**
-     * forEach callback in insertion order, similar to JS Map.
-     */
     forEach(
         callback: (value: bigint, key: bigint, map: FastBigIntMap) => void,
         thisArg?: unknown,
     ): void {
         for (const key of this.keyOrder) {
-            callback.call(thisArg, this.items[key.toString()], key, this);
+            callback.call(thisArg, this.items.get(key) as bigint, key, this);
         }
     }
 
-    /**
-     * Makes the map iterable with `for...of`, yielding [key, value] pairs.
-     */
     [Symbol.iterator](): IterableIterator<[bigint, bigint]> {
         return this.entries();
     }

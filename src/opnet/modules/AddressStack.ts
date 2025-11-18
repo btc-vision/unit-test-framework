@@ -2,16 +2,21 @@ import { Address } from '@btc-vision/transaction';
 
 export class AddressStack {
     private items: Address[] = [];
+    private bigintItems: bigint[] = [];
 
     public get length(): number {
         return this.items.length;
     }
 
     public push(address: Address): number {
+        this.bigintItems.push(address.toBigInt());
+
         return this.items.push(address);
     }
 
     public pop(): Address | undefined {
+        this.bigintItems.pop();
+
         return this.items.pop();
     }
 
@@ -23,21 +28,17 @@ export class AddressStack {
 
     public clear(): void {
         this.items = [];
+        this.bigintItems = [];
     }
 
     public includes(address: Address): boolean {
-        for (const item of this.items) {
-            if (item.equals(address)) {
-                return true;
-            }
-        }
-
-        return false;
+        return this.bigintItems.includes(address.toBigInt());
     }
 
     public concat(other: AddressStack): AddressStack {
         const result = new AddressStack();
         result.items = this.items.concat(other.items);
+        result.bigintItems = this.bigintItems.concat(other.bigintItems);
         return result;
     }
 

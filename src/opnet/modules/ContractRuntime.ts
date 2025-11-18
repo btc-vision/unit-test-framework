@@ -27,11 +27,11 @@ import { ContractDetails, StateOverride } from '../interfaces/ContractDetails.js
 import { ExecutionParameters } from '../interfaces/ExecuteParameters.js';
 import { ContractParameters, RustContract } from '../vm/RustContract.js';
 import { StateHandler } from '../vm/StateHandler.js';
-import { AddressStack } from './AddressStack.js';
 import { FastBigIntMap } from './FastMap.js';
 import { BytecodeManager } from './GetBytecode.js';
 import { MLDSAMetadata } from '../../mldsa/MLDSAMetadata.js';
 import { ConsensusManager } from '../../consensus/ConsensusManager.js';
+import { AddressStack } from './AddressStack.js';
 
 const PROTOCOL_ID: Uint8Array = Uint8Array.from(
     Buffer.from(
