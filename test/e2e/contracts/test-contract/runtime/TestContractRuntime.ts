@@ -4,6 +4,9 @@ import { BytecodeManager, CallResponse, ContractRuntime } from '../../../../../s
 export class TestContractRuntime extends ContractRuntime {
     private readonly sha256Selector: number = this.getSelector('sha256(bytes)');
     private readonly verifySignatureSelector: number = this.getSelector('verifySignature(bytes)');
+    private readonly verifySignatureSchnorrSelector: number = this.getSelector(
+        'verifySignatureSchnorr(bytes)',
+    );
     private readonly ripemd160Selector: number = this.getSelector('ripemd160(bytes)');
     private readonly storeSelector: number = this.getSelector('store(bytes32,bytes32)');
     private readonly loadSelector: number = this.getSelector('load(bytes32)');
@@ -57,7 +60,10 @@ export class TestContractRuntime extends ContractRuntime {
         value: Uint8Array,
         sender: Address,
         origin: Address,
-    ): Promise<boolean> {
+    ): Promise<{
+        result: boolean;
+        gas: bigint;
+    }> {
         const calldata = new BinaryWriter();
         calldata.writeSelector(this.verifySignatureSelector);
         calldata.writeBytesWithLength(value);
@@ -71,7 +77,37 @@ export class TestContractRuntime extends ContractRuntime {
         this.handleResponse(response);
 
         const reader = new BinaryReader(response.response);
-        return reader.readBoolean();
+        return {
+            result: reader.readBoolean(),
+            gas: response.usedGas,
+        };
+    }
+
+    public async verifySignatureSchnorr(
+        value: Uint8Array,
+        sender: Address,
+        origin: Address,
+    ): Promise<{
+        result: boolean;
+        gas: bigint;
+    }> {
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(this.verifySignatureSchnorrSelector);
+        calldata.writeBytesWithLength(value);
+
+        const response = await this.execute({
+            calldata: calldata.getBuffer(),
+            sender: sender,
+            txOrigin: origin,
+        });
+
+        this.handleResponse(response);
+
+        const reader = new BinaryReader(response.response);
+        return {
+            result: reader.readBoolean(),
+            gas: response.usedGas,
+        };
     }
 
     public async ripemd160Call(value: Uint8Array): Promise<Uint8Array> {

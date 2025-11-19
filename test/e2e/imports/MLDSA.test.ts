@@ -46,7 +46,45 @@ await opnet('Hash tests', async (vm: OPNetUnit) => {
             wallet.address,
         );
 
-        Assert.expect(result).toEqual(true);
+        vm.success(`Gas used: ${result.gas}`);
+
+        Assert.expect(result.result).toEqual(true);
+    });
+
+    await vm.it('Should sign and verify schnorr message', async () => {
+        const wallet = Blockchain.generateRandomWallet();
+        vm.info(
+            `Using wallet address: ${wallet.address.toHex()} | Public Key: ${wallet.quantumPublicKeyHex}`,
+        );
+
+        const message = new BinaryWriter();
+        message.writeString('Hello, world! This is a test message for Schnorr signing.');
+
+        const messageBuffer = message.getBuffer();
+        const signature = MessageSigner.tweakAndSignMessage(
+            wallet.keypair,
+            messageBuffer,
+            Blockchain.network,
+        );
+
+        const valid = MessageSigner.tweakAndVerifySignature(
+            wallet.keypair.publicKey,
+            messageBuffer,
+            signature.signature,
+        );
+
+        vm.info(`Local verification result: ${valid}`);
+        Assert.expect(valid).toEqual(true);
+
+        const result = await contract.verifySignatureSchnorr(
+            signature.signature,
+            wallet.address,
+            wallet.address,
+        );
+
+        vm.success(`Gas used: ${result.gas}`);
+
+        Assert.expect(result.result).toEqual(true);
     });
 });
 

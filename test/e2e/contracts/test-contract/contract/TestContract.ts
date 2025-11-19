@@ -6,7 +6,6 @@ import {
     Calldata,
     encodeSelector,
     OP_NET,
-    Revert,
 } from '@btc-vision/btc-runtime/runtime';
 import {
     callContract,
@@ -73,9 +72,23 @@ export class TestContract extends OP_NET {
         const messageHashed = sha256(message.getBuffer());
         const result = Blockchain.verifySignature(Blockchain.tx.origin, data, messageHashed, true);
 
-        if (!result) {
-            throw new Revert('Invalid MLDSA signature');
-        }
+        const writer = new BytesWriter(1);
+        writer.writeBoolean(result);
+        return writer;
+    }
+
+    @method('bytes')
+    @returns({
+        type: ABIDataTypes.BOOL,
+        name: 'valid',
+    })
+    public verifySignatureSchnorr(calldata: Calldata): BytesWriter {
+        const data = calldata.readBytesWithLength();
+        const message = new BytesWriter(57);
+        message.writeString('Hello, world! This is a test message for Schnorr signing.');
+
+        const messageHashed = sha256(message.getBuffer());
+        const result = Blockchain.verifySignature(Blockchain.tx.origin, data, messageHashed, false);
 
         const writer = new BytesWriter(1);
         writer.writeBoolean(result);
