@@ -40,6 +40,8 @@ const PROTOCOL_ID: Uint8Array = Uint8Array.from(
     ),
 );
 
+const ZERO_BUFFER = Buffer.alloc(32, 0);
+
 export class ContractRuntime extends Logger {
     public readonly logColor: string = '#39b2f3';
 
@@ -103,6 +105,12 @@ export class ContractRuntime extends Logger {
 
         if (!this.deployer) {
             throw new Error('Deployer address not provided');
+        }
+
+        try {
+            this.deployer.tweakedPublicKeyToBuffer();
+        } catch (e) {
+            throw new Error('Deployer address does not have a valid tweaked public key');
         }
     }
 
@@ -319,6 +327,10 @@ export class ContractRuntime extends Logger {
 
             return response;
         } catch (e) {
+            console.log(
+                `(debug deploy ${BytecodeManager.getFileName(this.address)}) deployContract failed with error: ${(e as Error).stack}`,
+            );
+
             const newResponse = this.handleError(e as Error);
 
             return {
@@ -574,7 +586,7 @@ export class ContractRuntime extends Logger {
             const requestedContractBytecode = BytecodeManager.getBytecode(address) as Buffer;
             const newContract: ContractRuntime = new ContractRuntime({
                 address: deployedContractAddress,
-                deployer: this.address,
+                deployer: new Address(this.address.toBuffer(), ZERO_BUFFER),
                 gasLimit: this.gasMax,
                 gasUsed: this.gasUsed,
                 bytecode: requestedContractBytecode,
