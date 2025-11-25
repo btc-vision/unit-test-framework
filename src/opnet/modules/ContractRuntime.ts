@@ -17,7 +17,7 @@ import {
     AddressSet,
     BinaryReader,
     BinaryWriter,
-    Map,
+    FastMap,
     NetEvent,
 } from '@btc-vision/transaction';
 import crypto from 'crypto';
@@ -54,9 +54,9 @@ export class ContractRuntime extends Logger {
     // global states
     public address: Address;
     public readonly deployer: Address;
-    protected transient: Map<bigint, bigint> = new Map<bigint, bigint>();
-    protected states: Map<bigint, bigint> = new Map<bigint, bigint>();
-    protected deploymentStates: Map<bigint, bigint> = new Map<bigint, bigint>();
+    protected transient: FastMap<bigint, bigint> = new FastMap<bigint, bigint>();
+    protected states: FastMap<bigint, bigint> = new FastMap<bigint, bigint>();
+    protected deploymentStates: FastMap<bigint, bigint> = new FastMap<bigint, bigint>();
 
     // internal states
     protected events: NetEvent[] = [];
@@ -70,7 +70,7 @@ export class ContractRuntime extends Logger {
     private callStack: AddressStack = new AddressStack();
     private touchedAddresses: AddressSet = new AddressSet();
     private touchedBlocks: Set<bigint> = new Set();
-    private statesBackup: Map<bigint, bigint> = new Map<bigint, bigint>();
+    private statesBackup: FastMap<bigint, bigint> = new FastMap<bigint, bigint>();
     private totalEventLength: number = 0;
 
     // global states
@@ -222,7 +222,9 @@ export class ContractRuntime extends Logger {
     }
 
     public backupStates(): void {
-        this.statesBackup = new Map<bigint, bigint>(StateHandler.getTemporaryStates(this.address));
+        this.statesBackup = new FastMap<bigint, bigint>(
+            StateHandler.getTemporaryStates(this.address),
+        );
     }
 
     public restoreStates(): void {

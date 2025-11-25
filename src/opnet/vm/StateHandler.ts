@@ -1,17 +1,17 @@
-import { Address, AddressMap, Map } from '@btc-vision/transaction';
+import { Address, AddressMap, FastMap } from '@btc-vision/transaction';
 
 class InternalStateHandler {
-    protected states: AddressMap<Map<bigint, bigint>> = new AddressMap();
-    protected instancesTemporaryStates: AddressMap<Map<bigint, bigint>> = new AddressMap();
+    protected states: AddressMap<FastMap<bigint, bigint>> = new AddressMap();
+    protected instancesTemporaryStates: AddressMap<FastMap<bigint, bigint>> = new AddressMap();
     protected deployed: AddressMap<boolean> = new AddressMap();
     protected pendingDeployments: AddressMap<boolean> = new AddressMap();
 
-    public overrideStates(contract: Address, states: Map<bigint, bigint>): void {
+    public overrideStates(contract: Address, states: FastMap<bigint, bigint>): void {
         const state = this.states.get(contract);
         if (state) {
             state.setAll(states);
         } else {
-            this.states.set(contract, new Map(states));
+            this.states.set(contract, new FastMap<bigint, bigint>(states));
         }
     }
 
@@ -19,14 +19,14 @@ class InternalStateHandler {
         this.deployed.set(contract, true);
     }
 
-    public getStates(contract: Address): Map<bigint, bigint> {
+    public getStates(contract: Address): FastMap<bigint, bigint> {
         const state = this.states.get(contract);
         if (state) {
             return state;
         }
 
         // If no state exists, create a new one
-        const newState = new Map<bigint, bigint>();
+        const newState = new FastMap<bigint, bigint>();
         this.states.set(contract, newState);
 
         return newState;
@@ -73,7 +73,7 @@ class InternalStateHandler {
             if (globalState) {
                 globalState.addAll(tempState);
             } else {
-                this.states.set(contract, new Map<bigint, bigint>(tempState));
+                this.states.set(contract, new FastMap<bigint, bigint>(tempState));
             }
 
             tempState.clear();
@@ -82,25 +82,25 @@ class InternalStateHandler {
         this.instancesTemporaryStates.clear();
     }
 
-    public getTemporaryStates(contract: Address): Map<bigint, bigint> {
+    public getTemporaryStates(contract: Address): FastMap<bigint, bigint> {
         const state = this.instancesTemporaryStates.get(contract);
         if (state) {
             return state;
         }
 
         // If no temporary state exists, create a new one
-        const newState = new Map<bigint, bigint>();
+        const newState = new FastMap<bigint, bigint>();
         this.instancesTemporaryStates.set(contract, newState);
 
         return newState;
     }
 
-    public setTemporaryStates(contract: Address, states: Map<bigint, bigint>): void {
+    public setTemporaryStates(contract: Address, states: FastMap<bigint, bigint>): void {
         const state = this.instancesTemporaryStates.get(contract);
         if (state) {
             state.setAll(states);
         } else {
-            this.instancesTemporaryStates.set(contract, new Map<bigint, bigint>(states));
+            this.instancesTemporaryStates.set(contract, new FastMap<bigint, bigint>(states));
         }
     }
 

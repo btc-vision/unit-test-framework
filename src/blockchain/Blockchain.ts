@@ -7,7 +7,13 @@ import {
     ContractManager,
     ThreadSafeJsImportResponse,
 } from '@btc-vision/op-vm';
-import { Address, AddressMap, TapscriptVerificator, Wallet } from '@btc-vision/transaction';
+import {
+    Address,
+    AddressMap,
+    FastMap,
+    TapscriptVerificator,
+    Wallet,
+} from '@btc-vision/transaction';
 import crypto from 'crypto';
 import {
     NETWORK,
@@ -38,7 +44,7 @@ class BlockchainBase extends Logger {
 
     private readonly enableDebug: boolean = false;
     private readonly contracts: AddressMap<ContractRuntime> = new AddressMap<ContractRuntime>();
-    private readonly bindings: Map<bigint, RustContractBinding> = new Map<
+    private readonly bindings: FastMap<bigint, RustContractBinding> = new FastMap<
         bigint,
         RustContractBinding
     >();
