@@ -34,22 +34,22 @@
     },
     "overrides": {
         "@btc-vision/btc-runtime": "1.10.5",
-        "@btc-vision/transaction": "1.7.7",
-        "opnet": "1.7.3"
+        "@btc-vision/transaction": "1.7.12",
+        "opnet": "1.7.8"
     },
     "resolutions": {
         "@btc-vision/btc-runtime": "1.10.5",
-        "@btc-vision/transaction": "1.7.7",
-        "opnet": "1.7.3"
+        "@btc-vision/transaction": "1.7.12",
+        "opnet": "1.7.8"
     },
     "dependencies": {
         "@btc-vision/bitcoin": "^6.4.11",
         "@btc-vision/logger": "^1.0.7",
         "@btc-vision/op-vm": "^0.6.0",
-        "@btc-vision/transaction": "1.7.7",
+        "@btc-vision/transaction": "1.7.12",
         "gulp-logger-new": "^1.0.1",
         "npm-run-all": "^4.1.5",
-        "opnet": "1.7.3",
+        "opnet": "1.7.8",
         "typescript": "^5.9.3"
     },
     "devDependencies": {
