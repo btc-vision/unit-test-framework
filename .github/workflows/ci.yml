@@ -32,9 +32,6 @@ jobs:
       - name: Build the project
         run: npm run build
 
-      - name: Build browser assets
-        run: npm run browserBuild
-
       - name: Publish to npm
         run: npm publish --access public
 
