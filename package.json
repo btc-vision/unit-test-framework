@@ -23,7 +23,7 @@
         "url": "https://github.com/btc-vision/unit-test-framework"
     },
     "author": "OP_NET",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "types": "build/index.d.ts",
     "exports": {
         ".": {
