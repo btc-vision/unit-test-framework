@@ -1,4 +1,4 @@
-name: CI for OP_NET Unit Tests Framework
+name: CI for UNIT-TEST-FRAMEWORK
 
 on:
   push:
@@ -20,17 +20,23 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version: '24.x'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Update npm
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm install
-      - name: Build
+
+      - name: Build the project
         run: npm run build
+
+      - name: Build browser assets
+        run: npm run browserBuild
+
       - name: Publish to npm
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
 
       - name: Create GitHub Release
         uses: actions/create-release@v1
@@ -38,6 +44,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           release_name: Release ${{ github.ref_name }}
           body: |
-            Automated release for BTCRUNTIME.
+            Automated release for UNIT-TEST-FRAMEWORK.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
