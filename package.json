@@ -33,7 +33,7 @@
         }
     },
     "resolutions": {
-        "@btc-vision/btc-runtime": "1.10.10",
+        "@btc-vision/btc-runtime": "1.10.11",
         "@btc-vision/transaction": "1.7.19",
         "opnet": "1.7.16"
     },
@@ -48,9 +48,9 @@
         "typescript": "^5.9.3"
     },
     "devDependencies": {
-        "@btc-vision/as-bignum": "^0.0.6",
-        "@btc-vision/btc-runtime": "1.10.10",
-        "@btc-vision/opnet-transform": "^0.1.12",
+        "@btc-vision/as-bignum": "^0.0.7",
+        "@btc-vision/btc-runtime": "1.10.11",
+        "@btc-vision/opnet-transform": "^0.2.1",
         "@eslint/js": "^9.39.1",
         "@types/node": "^24.8.1",
         "@typescript-eslint/eslint-plugin": "^8.46.1",
