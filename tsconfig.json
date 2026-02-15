@@ -29,12 +29,7 @@
     },
     "include": [
         "src/**/*.ts",
-        "src/*",
-        "src/**/*.js",
-        "src/*.ts",
-        "src/*.js",
-        "src/*.cjs",
-		"test/*.ts"
-	],
-    "exclude": ["test/**/*.ts", "test/**/*.js", "test/**/*.ts", "node_modules"]
+        "test/**/*.ts"
+    ],
+    "exclude": ["node_modules"]
 }
