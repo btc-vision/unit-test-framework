@@ -204,9 +204,14 @@ class BlockchainBase extends Logger {
     public clearContracts(): void {
         StateHandler.purgeAll();
         ConsensusManager.default();
+        BytecodeManager.clear();
 
         this.addressMLDSACache.clear();
         this.contracts.clear();
+
+        if (this._contractManager) {
+            this._contractManager.destroyCache();
+        }
     }
 
     public generateAddress(deployer: Address, salt: Buffer, from: Address): Address {

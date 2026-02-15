@@ -125,6 +125,9 @@ export class ContractRuntime extends Logger {
     }
 
     protected _bytecode: Buffer | undefined;
+    private _pendingBytecode: Buffer | undefined;
+    private _pendingBytecodeBlock: bigint | undefined;
+    private _hasUpgradedInCurrentExecution: boolean = false;
 
     protected get bytecode(): Buffer {
         if (!this._bytecode) throw new Error(`Bytecode not found for ${this.address}`);
@@ -363,6 +366,9 @@ export class ContractRuntime extends Logger {
 
                     StateHandler.pushAllTempStatesToGlobal();
                 }
+            } else {
+                // Transaction reverted: cancel any pending bytecode upgrade
+                this.cancelPendingBytecodeUpgrade();
             }
 
             // Reset internal states
@@ -391,9 +397,14 @@ export class ContractRuntime extends Logger {
 
         this.touchedAddresses = new AddressSet([this.address]);
         this.touchedBlocks = new Set([Blockchain.blockNumber]);
+
+        this._hasUpgradedInCurrentExecution = false;
     }
 
     protected async executeCall(executionParameters: ExecutionParameters): Promise<CallResponse> {
+        // Apply pending bytecode upgrade if block has advanced
+        this.applyPendingBytecodeUpgrade();
+
         // Deploy if not deployed.
         const deployment = await this.deployContract(false);
         if (deployment) {
@@ -463,6 +474,28 @@ export class ContractRuntime extends Logger {
             touchedAddresses: this.touchedAddresses,
             touchedBlocks: this.touchedBlocks,
         });
+    }
+
+    private applyPendingBytecodeUpgrade(): void {
+        if (
+            this._pendingBytecode &&
+            this._pendingBytecodeBlock !== undefined &&
+            Blockchain.blockNumber > this._pendingBytecodeBlock
+        ) {
+            this._bytecode = this._pendingBytecode;
+            BytecodeManager.forceSetBytecode(this.address, this._pendingBytecode);
+
+            // Invalidate the Rust VM's compiled module cache for this address
+            Blockchain.contractManager.destroyCache();
+
+            this._pendingBytecode = undefined;
+            this._pendingBytecodeBlock = undefined;
+        }
+    }
+
+    private cancelPendingBytecodeUpgrade(): void {
+        this._pendingBytecode = undefined;
+        this._pendingBytecodeBlock = undefined;
     }
 
     protected calculateGasCostSave(response: CallResponse): bigint {
@@ -557,30 +590,98 @@ export class ContractRuntime extends Logger {
     }
 
     private async updateFromAddress(data: Buffer): Promise<Buffer | Uint8Array> {
-        await Promise.resolve();
-
         try {
             const reader = new BinaryReader(data);
             this.gasUsed = reader.readU64();
-            const address: Address = reader.readAddress();
+            const sourceAddress: Address = reader.readAddress();
             const calldata: Buffer = Buffer.from(reader.readBytes(reader.bytesLeft() | 0));
-            const gasBefore = this.gasUsed;
-            const contractBytecode = BytecodeManager.getBytecode(address) as Buffer;
 
-            return this.buildDeployFromAddressResponse(
-                address,
-                contractBytecode.byteLength,
-                this.gasUsed - gasBefore,
-                0,
-                contractBytecode,
-            );
+            // Enforce one upgrade per block per contract
+            if (
+                this._pendingBytecodeBlock !== undefined &&
+                this._pendingBytecodeBlock === Blockchain.blockNumber
+            ) {
+                throw new Error('OP_NET: Only one upgrade per block per contract is allowed');
+            }
+
+            const gasBefore = this.gasUsed;
+            const newBytecode = BytecodeManager.getBytecode(sourceAddress) as Buffer;
+
+            // Call onUpdate on a TEMPORARY WASM instance with the CURRENT bytecode.
+            // We cannot call onUpdate on the active WASM instance (it is mid-execution),
+            // so we spin up a fresh instance with the same bytecode and environment.
+            const originalContract = this._contract;
+            let tempContract: RustContract | undefined;
+
+            // Set upgrade flag BEFORE onUpdate to prevent:
+            // 1. Nested updateFromAddress calls from within onUpdate
+            // 2. Cross-contract calls (Blockchain.call) from within onUpdate
+            this._hasUpgradedInCurrentExecution = true;
+            let upgradeCommitted = false;
+
+            try {
+                tempContract = new RustContract(this.generateParams());
+                this._contract = tempContract;
+                this.setEnvironment(Blockchain.msgSender, Blockchain.txOrigin);
+
+                let error: Error | undefined;
+                const response = await tempContract
+                    .onUpdate(calldata)
+                    .catch((e: unknown) => {
+                        error = e as Error;
+                    });
+
+                if (error) {
+                    throw error;
+                }
+
+                if (!response || response.status !== 0) {
+                    const used = (response?.gasUsed ?? this.gasUsed) - gasBefore;
+                    this.gasUsed = response?.gasUsed ?? this.gasUsed;
+
+                    return this.buildUpdateFromAddressResponse(
+                        0,
+                        used,
+                        (response?.status as 0 | 1) ?? 1,
+                        response?.data ?? this.getErrorAsBuffer(new Error('onUpdate failed')),
+                    );
+                }
+
+                // Schedule bytecode replacement for the next block
+                this._pendingBytecode = newBytecode;
+                this._pendingBytecodeBlock = Blockchain.blockNumber;
+                upgradeCommitted = true;
+
+                const used = response.gasUsed - gasBefore;
+                this.gasUsed = response.gasUsed;
+
+                return this.buildUpdateFromAddressResponse(
+                    newBytecode.byteLength,
+                    used,
+                    0,
+                    response.data,
+                );
+            } finally {
+                this._contract = originalContract;
+
+                if (!upgradeCommitted) {
+                    this._hasUpgradedInCurrentExecution = false;
+                }
+
+                if (tempContract) {
+                    try {
+                        tempContract.dispose();
+                    } catch {
+                        // Ignore dispose errors
+                    }
+                }
+            }
         } catch (e) {
             if (this.logUnexpectedErrors) {
                 this.warn(`(debug) updateFromAddress failed with error: ${(e as Error).message}`);
             }
 
-            return this.buildDeployFromAddressResponse(
-                Address.dead(),
+            return this.buildUpdateFromAddressResponse(
                 0,
                 this.gasUsed,
                 1,
@@ -713,6 +814,20 @@ export class ContractRuntime extends Logger {
         return writer.getBuffer();
     }
 
+    private buildUpdateFromAddressResponse(
+        bytecodeLength: number,
+        usedGas: bigint,
+        status: 0 | 1,
+        response: Uint8Array,
+    ): Uint8Array {
+        const writer = new BinaryWriter();
+        writer.writeU32(bytecodeLength);
+        writer.writeU64(usedGas);
+        writer.writeU32(status);
+        writer.writeBytes(response);
+        return writer.getBuffer();
+    }
+
     private loadMLDSA(data: Buffer): Buffer | Uint8Array {
         const reader = new BinaryReader(data);
         const level = reader.readU8();
@@ -822,6 +937,12 @@ export class ContractRuntime extends Logger {
     private async call(data: Buffer): Promise<Buffer | Uint8Array> {
         if (!this._contract) {
             throw new Error('Contract not initialized');
+        }
+
+        if (this._hasUpgradedInCurrentExecution) {
+            throw new Error(
+                'OP_NET: Cannot call other contracts after upgrading bytecode in the same execution',
+            );
         }
 
         let gasUsed: bigint = this.gasUsed;

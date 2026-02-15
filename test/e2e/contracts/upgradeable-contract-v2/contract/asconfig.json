@@ -1,0 +1,32 @@
+{
+  "targets": {
+    "debug": {
+      "outFile": "build/UpgradeableContractV2.wasm",
+      "textFile": "build/UpgradeableContractV2.wat"
+    }
+  },
+  "options": {
+    "transform": "@btc-vision/opnet-transform",
+    "sourceMap": false,
+    "optimizeLevel": 3,
+    "shrinkLevel": 1,
+    "converge": true,
+    "noAssert": false,
+    "enable": [
+      "sign-extension",
+      "mutable-globals",
+      "nontrapping-f2i",
+      "bulk-memory",
+      "simd",
+      "reference-types",
+      "multi-value"
+    ],
+    "runtime": "stub",
+    "memoryBase": 0,
+    "initialMemory": 1,
+    "exportStart": "start",
+    "use": [
+      "abort=index/abort"
+    ]
+  }
+}

@@ -37,6 +37,15 @@ class BytecodeManagerBase {
 
         this.bytecodeMap.set(address, bytecode);
     }
+
+    public forceSetBytecode(address: Address, bytecode: Buffer): void {
+        this.bytecodeMap.set(address, bytecode);
+    }
+
+    public clear(): void {
+        this.bytecodeMap.clear();
+        this.fileNameMap.clear();
+    }
 }
 
 export const BytecodeManager = new BytecodeManagerBase();
