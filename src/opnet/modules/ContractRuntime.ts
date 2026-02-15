@@ -127,6 +127,7 @@ export class ContractRuntime extends Logger {
     protected _bytecode: Buffer | undefined;
     private _pendingBytecode: Buffer | undefined;
     private _pendingBytecodeBlock: bigint | undefined;
+    private _pendingUpgradeCalldata: Buffer | undefined;
     private _hasUpgradedInCurrentExecution: boolean = false;
 
     protected get bytecode(): Buffer {
@@ -403,7 +404,7 @@ export class ContractRuntime extends Logger {
 
     protected async executeCall(executionParameters: ExecutionParameters): Promise<CallResponse> {
         // Apply pending bytecode upgrade if block has advanced
-        this.applyPendingBytecodeUpgrade();
+        await this.applyPendingBytecodeUpgrade();
 
         // Deploy if not deployed.
         const deployment = await this.deployContract(false);
@@ -476,26 +477,67 @@ export class ContractRuntime extends Logger {
         });
     }
 
-    private applyPendingBytecodeUpgrade(): void {
+    private async applyPendingBytecodeUpgrade(): Promise<void> {
         if (
-            this._pendingBytecode &&
-            this._pendingBytecodeBlock !== undefined &&
-            Blockchain.blockNumber > this._pendingBytecodeBlock
+            !this._pendingBytecode ||
+            this._pendingBytecodeBlock === undefined ||
+            Blockchain.blockNumber <= this._pendingBytecodeBlock
         ) {
-            this._bytecode = this._pendingBytecode;
-            BytecodeManager.forceSetBytecode(this.address, this._pendingBytecode);
+            return;
+        }
 
-            // Invalidate the Rust VM's compiled module cache for this address
+        const previousBytecode = this._bytecode;
+        const calldata = this._pendingUpgradeCalldata || Buffer.alloc(0);
+
+        // Swap to the new bytecode first
+        this._bytecode = this._pendingBytecode;
+        BytecodeManager.forceSetBytecode(this.address, this._pendingBytecode);
+        Blockchain.contractManager.destroyCache();
+
+        // Call onUpdate on the NEW bytecode, bypassing precomputation cache
+        let tempContract: RustContract | undefined;
+        try {
+            tempContract = new RustContract(this.generateParams(true));
+            const savedContract = this._contract;
+            this._contract = tempContract;
+            this.setEnvironment(Blockchain.msgSender, Blockchain.txOrigin);
+
+            const response = await tempContract.onUpdate(calldata);
+            this._contract = savedContract;
+
+            if (response.status !== 0) {
+                throw new Error('OP_NET: onUpdate failed on new bytecode');
+            }
+        } catch (e) {
+            // onUpdate failed — revert bytecode swap
+            this._bytecode = previousBytecode;
+            if (previousBytecode) {
+                BytecodeManager.forceSetBytecode(this.address, previousBytecode);
+            }
             Blockchain.contractManager.destroyCache();
+
+            if (this.logUnexpectedErrors) {
+                this.warn(`onUpdate failed, upgrade reverted: ${(e as Error).message}`);
+            }
+        } finally {
+            if (tempContract) {
+                try {
+                    tempContract.dispose();
+                } catch {
+                    // Ignore dispose errors
+                }
+            }
 
             this._pendingBytecode = undefined;
             this._pendingBytecodeBlock = undefined;
+            this._pendingUpgradeCalldata = undefined;
         }
     }
 
     private cancelPendingBytecodeUpgrade(): void {
         this._pendingBytecode = undefined;
         this._pendingBytecodeBlock = undefined;
+        this._pendingUpgradeCalldata = undefined;
     }
 
     protected calculateGasCostSave(response: CallResponse): bigint {
@@ -620,7 +662,7 @@ export class ContractRuntime extends Logger {
             let upgradeCommitted = false;
 
             try {
-                tempContract = new RustContract(this.generateParams());
+                tempContract = new RustContract(this.generateParams(true));
                 this._contract = tempContract;
                 this.setEnvironment(Blockchain.msgSender, Blockchain.txOrigin);
 
@@ -1226,7 +1268,7 @@ export class ContractRuntime extends Logger {
         }
     }
 
-    private generateParams(): ContractParameters {
+    private generateParams(bypassCache?: boolean): ContractParameters {
         return {
             address: this.p2opAddress,
             bytecode: this.bytecode,
@@ -1235,6 +1277,7 @@ export class ContractRuntime extends Logger {
             memoryPagesUsed: this.memoryPagesUsed,
             network: this.getNetwork(),
             isDebugMode: this.isDebugMode,
+            bypassCache,
             //returnProofs: this.proofFeatureEnabled,
             updateFromAddress: this.updateFromAddress.bind(this),
             contractManager: Blockchain.contractManager,

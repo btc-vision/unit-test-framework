@@ -22,6 +22,7 @@ export interface ContractParameters extends Omit<RustContractBinding, 'id'> {
     readonly memoryPagesUsed: bigint;
     readonly network: BitcoinNetworkRequest;
     readonly isDebugMode: boolean;
+    readonly bypassCache?: boolean;
 
     readonly contractManager: ContractManager;
 }
@@ -157,7 +158,7 @@ export class RustContract {
             BigInt(this.params.memoryPagesUsed.toString()),
             this.params.network,
             this.params.isDebugMode,
-            //false,
+            this.params.bypassCache ?? false,
         );
 
         this._instantiated = true;

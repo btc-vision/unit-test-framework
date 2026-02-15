@@ -17,7 +17,8 @@
         "test:sha256": "tsx test/e2e/imports/Hashes.test.ts",
         "test:signature": "tsx test/e2e/imports/MLDSA.test.ts",
         "test:storage": "tsx test/e2e/imports/Storage.test.ts",
-        "test:update-from-address": "tsx test/e2e/imports/UpdateFromAddress.test.ts"
+        "test:update-from-address": "tsx test/e2e/imports/UpdateFromAddress.test.ts",
+        "test:ecdsa": "tsx test/e2e/imports/ECDSA.test.ts"
     },
     "repository": {
         "type": "git",
