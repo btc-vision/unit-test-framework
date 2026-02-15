@@ -5,11 +5,13 @@ import {
     ExitDataResponse,
 } from '@btc-vision/op-vm';
 
-import { SELECTOR_BYTE_LENGTH, U32_BYTE_LENGTH } from '@btc-vision/transaction';
-import { Blockchain } from '../../blockchain/Blockchain.js';
-import { RustContractBinding } from './RustContractBinding.js';
+import { BinaryWriter, SELECTOR_BYTE_LENGTH, U32_BYTE_LENGTH } from '@btc-vision/transaction';
+import { RustContractBinding } from './RustContractBinding';
+import { Blockchain } from '../../blockchain/Blockchain';
 
-//init();
+process.on('uncaughtException', (error) => {
+    console.log('Uncaught Exception thrown:', error);
+});
 
 export interface ContractParameters extends Omit<RustContractBinding, 'id'> {
     readonly address: string;
@@ -20,7 +22,6 @@ export interface ContractParameters extends Omit<RustContractBinding, 'id'> {
     readonly memoryPagesUsed: bigint;
     readonly network: BitcoinNetworkRequest;
     readonly isDebugMode: boolean;
-    readonly returnProofs: boolean;
 
     readonly contractManager: ContractManager;
 }
@@ -46,7 +47,7 @@ export class RustContract {
         }
 
         if (this._id == null) {
-            this._id = this.contractManager.reserveId();
+            this._id = BigInt(this.contractManager.reserveId().toString());
 
             Blockchain.registerBinding({
                 id: this._id,
@@ -56,6 +57,7 @@ export class RustContract {
                 tStore: this.params.tStore,
                 call: this.params.call,
                 deployContractAtAddress: this.params.deployContractAtAddress,
+                updateFromAddress: this.params.updateFromAddress,
                 log: this.params.log,
                 emit: this.params.emit,
                 inputs: this.params.inputs,
@@ -68,7 +70,7 @@ export class RustContract {
             this.instantiate();
         }
 
-        return this._id;
+        return BigInt(this._id.toString());
     }
 
     private _instantiated: boolean = false;
@@ -93,11 +95,21 @@ export class RustContract {
         return this._params;
     }
 
-    public static decodeRevertData(revertDataBytes: Uint8Array): Error {
+    public static getErrorAsBuffer(error: Error | string | undefined): Uint8Array {
+        const errorWriter = new BinaryWriter();
+        errorWriter.writeSelector(0x63739d5c);
+        errorWriter.writeStringWithLength(
+            typeof error === 'string' ? error : error?.message || 'Unknown error',
+        );
+
+        return errorWriter.getBuffer();
+    }
+
+    public static decodeRevertData(revertDataBytes: Uint8Array | Buffer): Error {
         if (RustContract.startsWithErrorSelector(revertDataBytes)) {
             const decoder = new TextDecoder();
             const revertMessage = decoder.decode(
-                revertDataBytes.slice(SELECTOR_BYTE_LENGTH + U32_BYTE_LENGTH),
+                revertDataBytes.subarray(SELECTOR_BYTE_LENGTH + U32_BYTE_LENGTH),
             );
 
             return new Error(revertMessage);
@@ -137,15 +149,15 @@ export class RustContract {
         if (this._instantiated) return;
 
         this.contractManager.instantiate(
-            this._id,
+            BigInt(this._id.toString()),
             this.params.address,
-            this.params.bytecode,
-            this.params.gasUsed,
-            this.params.gasMax,
-            this.params.memoryPagesUsed,
+            Buffer.copyBytesFrom(this.params.bytecode),
+            BigInt(this.params.gasUsed.toString()),
+            BigInt(this.params.gasMax.toString()),
+            BigInt(this.params.memoryPagesUsed.toString()),
             this.params.network,
             this.params.isDebugMode,
-            //this.params.returnProofs,
+            //false,
         );
 
         this._instantiated = true;
@@ -184,11 +196,16 @@ export class RustContract {
         }
     }
 
-    public async execute(calldata: Uint8Array | Buffer): Promise<ExitDataResponse> {
+    public async execute(calldata: Uint8Array | Buffer): Promise<Readonly<ExitDataResponse>> {
         if (this.enableDebug) console.log('execute', calldata);
 
         try {
-            return await this.contractManager.execute(this.id, Buffer.from(calldata));
+            const result = await this.contractManager.execute(
+                this.id,
+                Buffer.copyBytesFrom(calldata),
+            );
+
+            return this.toReadonlyObject(result);
         } catch (e) {
             if (this.enableDebug) console.log('Error in execute', e);
 
@@ -210,11 +227,34 @@ export class RustContract {
         }
     }
 
-    public async onDeploy(calldata: Uint8Array | Buffer): Promise<ExitDataResponse> {
+    public async onUpdate(calldata: Uint8Array | Buffer): Promise<Readonly<ExitDataResponse>> {
+        if (this.enableDebug) console.log('Setting onUpdate', calldata);
+
+        try {
+            const result = await this.contractManager.onUpdate(
+                this.id,
+                Buffer.copyBytesFrom(calldata),
+            );
+
+            return this.toReadonlyObject(result);
+        } catch (e) {
+            if (this.enableDebug) console.log('Error in onUpdate', e);
+
+            const error = e as Error;
+            throw this.getError(error);
+        }
+    }
+
+    public async onDeploy(calldata: Uint8Array | Buffer): Promise<Readonly<ExitDataResponse>> {
         if (this.enableDebug) console.log('Setting onDeployment', calldata);
 
         try {
-            return await this.contractManager.onDeploy(this.id, Buffer.from(calldata));
+            const result = await this.contractManager.onDeploy(
+                this.id,
+                Buffer.copyBytesFrom(calldata),
+            );
+
+            return this.toReadonlyObject(result);
         } catch (e) {
             if (this.enableDebug) console.log('Error in onDeployment', e);
 
@@ -224,7 +264,8 @@ export class RustContract {
     }
 
     public getRevertError(): Error {
-        const revertData = this.contractManager.getExitData(this.id).data;
+        const revertInfo = this.contractManager.getExitData(this.id);
+        const revertData = Buffer.copyBytesFrom(revertInfo.data);
 
         try {
             this.dispose();
@@ -233,8 +274,7 @@ export class RustContract {
         if (revertData.length === 0) {
             return new Error(`Execution reverted`);
         } else {
-            const revertDataBytes = Uint8Array.from(revertData);
-            return RustContract.decodeRevertData(revertDataBytes);
+            return RustContract.decodeRevertData(revertData);
         }
     }
 
@@ -244,18 +284,36 @@ export class RustContract {
                 return this.gasUsed;
             }
 
-            return this.contractManager.getUsedGas(this.id);
+            return BigInt(this.contractManager.getUsedGas(this.id).toString());
         } catch (e) {
             const error = e as Error;
             throw this.getError(error);
         }
     }
 
+    private toReadonlyObject(result: ExitDataResponse): Readonly<ExitDataResponse> {
+        return Object.preventExtensions(
+            Object.freeze(
+                Object.seal({
+                    status: result.status,
+                    data: Buffer.copyBytesFrom(result.data),
+                    gasUsed: BigInt(result.gasUsed.toString()),
+                    proofs: result.proofs?.map((proof) => {
+                        return {
+                            proof: Buffer.copyBytesFrom(proof.proof),
+                            vk: Buffer.copyBytesFrom(proof.vk),
+                        };
+                    }),
+                }),
+            ),
+        );
+    }
+
     private getError(err: Error): Error {
         if (this.enableDebug) console.log('Getting error', err);
 
         const msg = err.message;
-        if (msg && msg.includes('Execution reverted') && !msg.includes('Execution reverted:')) {
+        if (msg.includes('Execution reverted') && !msg.includes('Execution reverted:')) {
             return this.getRevertError();
         } else {
             return err;

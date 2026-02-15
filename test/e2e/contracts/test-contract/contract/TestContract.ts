@@ -6,13 +6,39 @@ import {
     Calldata,
     encodeSelector,
     OP_NET,
+    SignaturesMethods,
 } from '@btc-vision/btc-runtime/runtime';
 import {
     callContract,
     getCallResult,
     ripemd160,
     sha256,
-} from '@btc-vision/btc-runtime/runtime/env/global';
+} from '@btc-vision/btc-runtime/runtime/env/global'; /*const ONE_MB: usize = 1048576; // 1 MiB  = 1 048 576 bytes
+
+// Two contiguous 1 MiB heaps
+const src = new StaticArray<u8>(ONE_MB);
+const dst = new StaticArray<u8>(ONE_MB);
+
+// Deterministic pattern → corruption becomes obvious if you inspect
+for (let i: usize = 0; i < ONE_MB; ++i) {
+    unchecked((src[i] = <u8>i));
+}
+
+export function spamMemoryCopy(rounds: u32): void {
+    // Pound the bulk-memory instruction
+    const pSrc = changetype<usize>(src);
+    const pDst = changetype<usize>(dst);
+
+    for (let n: u32 = 0; n < rounds; ++n) {
+        memory.copy(pDst, pSrc, ONE_MB);
+    }
+
+    while (true) {
+        memory.fill(pDst, 0, ONE_MB);
+    }
+}
+
+spamMemoryCopy(i32.MAX_VALUE);*/
 
 /*const ONE_MB: usize = 1048576; // 1 MiB  = 1 048 576 bytes
 
@@ -70,7 +96,12 @@ export class TestContract extends OP_NET {
         message.writeString('Hello, world! This is a test message for MLDSA signing.');
 
         const messageHashed = sha256(message.getBuffer());
-        const result = Blockchain.verifySignature(Blockchain.tx.origin, data, messageHashed, true);
+        const result = Blockchain.verifySignature(
+            Blockchain.tx.origin,
+            data,
+            messageHashed,
+            SignaturesMethods.MLDSA,
+        );
 
         const writer = new BytesWriter(1);
         writer.writeBoolean(result);
@@ -88,7 +119,12 @@ export class TestContract extends OP_NET {
         message.writeString('Hello, world! This is a test message for Schnorr signing.');
 
         const messageHashed = sha256(message.getBuffer());
-        const result = Blockchain.verifySignature(Blockchain.tx.origin, data, messageHashed, false);
+        const result = Blockchain.verifySignature(
+            Blockchain.tx.origin,
+            data,
+            messageHashed,
+            SignaturesMethods.Schnorr,
+        );
 
         const writer = new BytesWriter(1);
         writer.writeBoolean(result);

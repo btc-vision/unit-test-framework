@@ -556,6 +556,39 @@ export class ContractRuntime extends Logger {
         }
     }
 
+    private async updateFromAddress(data: Buffer): Promise<Buffer | Uint8Array> {
+        await Promise.resolve();
+
+        try {
+            const reader = new BinaryReader(data);
+            this.gasUsed = reader.readU64();
+            const address: Address = reader.readAddress();
+            const calldata: Buffer = Buffer.from(reader.readBytes(reader.bytesLeft() | 0));
+            const gasBefore = this.gasUsed;
+            const contractBytecode = BytecodeManager.getBytecode(address) as Buffer;
+
+            return this.buildDeployFromAddressResponse(
+                address,
+                contractBytecode.byteLength,
+                this.gasUsed - gasBefore,
+                0,
+                contractBytecode,
+            );
+        } catch (e) {
+            if (this.logUnexpectedErrors) {
+                this.warn(`(debug) updateFromAddress failed with error: ${(e as Error).message}`);
+            }
+
+            return this.buildDeployFromAddressResponse(
+                Address.dead(),
+                0,
+                this.gasUsed,
+                1,
+                this.getErrorAsBuffer(e as Error),
+            );
+        }
+    }
+
     private async deployContractAtAddress(data: Buffer): Promise<Buffer | Uint8Array> {
         try {
             const reader = new BinaryReader(data);
@@ -1081,7 +1114,8 @@ export class ContractRuntime extends Logger {
             memoryPagesUsed: this.memoryPagesUsed,
             network: this.getNetwork(),
             isDebugMode: this.isDebugMode,
-            returnProofs: this.proofFeatureEnabled,
+            //returnProofs: this.proofFeatureEnabled,
+            updateFromAddress: this.updateFromAddress.bind(this),
             contractManager: Blockchain.contractManager,
             deployContractAtAddress: this.deployContractAtAddress.bind(this),
             load: (data: Buffer) => {
