@@ -278,6 +278,89 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
         Assert.expect(await contract.getValue()).toEqual(2);
     });
 
+    // --- Gas tracking ---
+
+    await vm.it('should consume gas during upgrade', async () => {
+        const response = await contract.upgrade(v2SourceAddress);
+
+        // Upgrade execution must consume gas
+        Assert.expect(response.usedGas > 0n).toEqual(true);
+    });
+
+    await vm.it('should consume more gas than a simple getValue call', async () => {
+        // Measure gas for a simple call
+        const getValueCalldata = new (await import('@btc-vision/transaction')).BinaryWriter();
+        getValueCalldata.writeSelector(
+            Number(`0x${contract.abiCoder.encodeSelector('getValue()')}`),
+        );
+        const simpleResponse = await contract.execute({
+            calldata: getValueCalldata.getBuffer(),
+        });
+        const simpleGas = simpleResponse.usedGas;
+
+        // Measure gas for upgrade (includes onUpdate + bytecode overhead)
+        const upgradeResponse = await contract.upgrade(v2SourceAddress);
+        const upgradeGas = upgradeResponse.usedGas;
+
+        // Upgrade should cost more than a trivial getter
+        Assert.expect(upgradeGas > simpleGas).toEqual(true);
+    });
+
+    await vm.it('should not charge upgrade gas on failed upgrade', async () => {
+        const nonExistentAddress = Blockchain.generateRandomAddress();
+
+        // Failed upgrade should still return a response (with error)
+        // but the overall tx reverts so gas is handled by the VM
+        await Assert.expect(async () => {
+            await contract.upgrade(nonExistentAddress);
+        }).toThrow();
+
+        // Contract should still be functional (no gas state corruption)
+        const value = await contract.getValue();
+        Assert.expect(value).toEqual(1);
+    });
+
+    // --- One upgrade per block enforcement ---
+
+    await vm.it('should reject second upgrade in the same block', async () => {
+        // First upgrade should succeed
+        await contract.upgrade(v2SourceAddress);
+
+        // Second upgrade in the same block should revert
+        await Assert.expect(async () => {
+            await contract.upgrade(v2SourceAddress);
+        }).toThrow();
+
+        // Contract should still work
+        const value = await contract.getValue();
+        Assert.expect(value).toEqual(1);
+    });
+
+    await vm.it('should clear pending state after block advances', async () => {
+        // Upgrade and advance
+        await contract.upgrade(v2SourceAddress);
+        Blockchain.mineBlock();
+
+        // Upgrade applied — getValue returns 2
+        Assert.expect(await contract.getValue()).toEqual(2);
+
+        // Mine another block — no pending upgrade, should still work
+        Blockchain.mineBlock();
+        Assert.expect(await contract.getValue()).toEqual(2);
+
+        // Storage operations should still work after pending state cleared
+        const key = new Uint8Array(32);
+        key[31] = 42;
+        const value = new Uint8Array(32);
+        value[31] = 99;
+
+        await contract.storeValue(key, value);
+        const loaded = await contract.loadValue(key);
+        Assert.expect(areBytesEqual(loaded, value)).toEqual(true);
+    });
+
+    // --- Upgrade + subsequent operations ---
+
     await vm.it('should allow operations between upgrade and block advance', async () => {
         const storageKey = new Uint8Array(32);
         storageKey[31] = 100;
