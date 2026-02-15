@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'crypto';
+import { createHash } from 'crypto';
 import { Address } from '@btc-vision/transaction';
 import { secp256k1 } from '@noble/curves/secp256k1.js';
 import { Assert, Blockchain, opnet, OPNetUnit } from '../../../src';
@@ -27,28 +27,31 @@ function generateKeyPair(seed: string): ECDSAKeyPair {
     return { privateKey, compressed, uncompressed, raw };
 }
 
-/** Sign a 32-byte hash and return Ethereum-style 65-byte sig: r(32) || s(32) || v(1) */
-function signEthereum(hash: Uint8Array, privateKey: Uint8Array): Uint8Array {
-    const sigBytes = secp256k1.sign(hash, privateKey);
-    const S = secp256k1.Signature;
-    const sig = S.fromBytes(sigBytes);
+/**
+ * Sign a raw message and return Ethereum-style 65-byte sig: r(32) || s(32) || v(1).
+ *
+ * IMPORTANT: noble/curves secp256k1.sign() hashes the message internally with SHA-256.
+ * The Rust VM's verify_prehash expects the SHA-256 hash of the raw message.
+ * So we sign the RAW message (noble hashes it), and pass SHA-256(rawMessage) to the contract.
+ */
+function signEthereum(rawMessage: Uint8Array, privateKey: Uint8Array): Uint8Array {
+    // noble/curves hashes rawMessage internally → signature is over SHA-256(rawMessage)
+    const sigBytes = secp256k1.sign(rawMessage, privateKey);
+    const pub33 = secp256k1.getPublicKey(privateKey, true);
 
-    const rHex = sig.r.toString(16).padStart(64, '0');
-    const sHex = sig.s.toString(16).padStart(64, '0');
-
-    // Find recovery id
+    // Find recovery id using secp256k1.recoverPublicKey (also hashes internally)
     for (let v = 0; v <= 1; v++) {
         const recSig = new Uint8Array(65);
         recSig[0] = v;
         recSig.set(sigBytes, 1);
 
         try {
-            const recovered = secp256k1.recoverPublicKey(recSig, hash);
-            const expected = secp256k1.getPublicKey(privateKey, true);
-            if (Buffer.from(recovered).equals(Buffer.from(expected))) {
+            const recovered = secp256k1.recoverPublicKey(recSig, rawMessage);
+            if (Buffer.from(recovered).equals(Buffer.from(pub33))) {
+                // Build Ethereum-style sig: r(32) || s(32) || v(1)
                 const ethSig = new Uint8Array(65);
-                ethSig.set(Buffer.from(rHex, 'hex'), 0);
-                ethSig.set(Buffer.from(sHex, 'hex'), 32);
+                ethSig.set(sigBytes.slice(0, 32), 0); // r
+                ethSig.set(sigBytes.slice(32, 64), 32); // s
                 ethSig[64] = v;
                 return ethSig;
             }
@@ -60,9 +63,14 @@ function signEthereum(hash: Uint8Array, privateKey: Uint8Array): Uint8Array {
     throw new Error('Could not find recovery id');
 }
 
-/** Sign a 32-byte hash and return Bitcoin-style 64-byte compact sig: r(32) || s(32) */
-function signBitcoin(hash: Uint8Array, privateKey: Uint8Array): Uint8Array {
-    return new Uint8Array(secp256k1.sign(hash, privateKey));
+/**
+ * Sign a raw message and return Bitcoin-style 64-byte compact sig: r(32) || s(32).
+ *
+ * IMPORTANT: noble/curves secp256k1.sign() hashes the message internally with SHA-256.
+ * The Rust VM's verify_prehash expects the SHA-256 hash of the raw message.
+ */
+function signBitcoin(rawMessage: Uint8Array, privateKey: Uint8Array): Uint8Array {
+    return new Uint8Array(secp256k1.sign(rawMessage, privateKey));
 }
 
 await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
@@ -71,7 +79,9 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
     const deployerAddress: Address = Blockchain.generateRandomAddress();
     const contractAddress: Address = Blockchain.generateRandomAddress();
 
+    // Raw message bytes (NOT pre-hashed) — noble/curves hashes internally
     const testMessage = new TextEncoder().encode('Hello, ECDSA test message!');
+    // SHA-256 hash to pass to the contract (the Rust VM verifies against this prehash)
     const testHash = sha256(testMessage);
 
     const key1 = generateKeyPair('ecdsa-test-key-1');
@@ -100,7 +110,7 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
     await vm.it(
         'should verify a valid Ethereum ECDSA signature with compressed public key',
         async () => {
-            const sig = signEthereum(testHash, key1.privateKey);
+            const sig = signEthereum(testMessage, key1.privateKey);
             const { result } = await contract.verifyECDSAEthereum(key1.compressed, sig, testHash);
             Assert.expect(result).toEqual(true);
         },
@@ -109,7 +119,7 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
     await vm.it(
         'should verify a valid Ethereum ECDSA signature with uncompressed public key',
         async () => {
-            const sig = signEthereum(testHash, key1.privateKey);
+            const sig = signEthereum(testMessage, key1.privateKey);
             const { result } = await contract.verifyECDSAEthereum(
                 key1.uncompressed,
                 sig,
@@ -122,20 +132,20 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
     await vm.it(
         'should verify a valid Ethereum ECDSA signature with raw 64-byte public key',
         async () => {
-            const sig = signEthereum(testHash, key1.privateKey);
+            const sig = signEthereum(testMessage, key1.privateKey);
             const { result } = await contract.verifyECDSAEthereum(key1.raw, sig, testHash);
             Assert.expect(result).toEqual(true);
         },
     );
 
     await vm.it('should reject Ethereum ECDSA signature with wrong public key', async () => {
-        const sig = signEthereum(testHash, key1.privateKey);
+        const sig = signEthereum(testMessage, key1.privateKey);
         const { result } = await contract.verifyECDSAEthereum(key2.compressed, sig, testHash);
         Assert.expect(result).toEqual(false);
     });
 
     await vm.it('should reject Ethereum ECDSA signature with wrong message', async () => {
-        const sig = signEthereum(testHash, key1.privateKey);
+        const sig = signEthereum(testMessage, key1.privateKey);
         const wrongHash = sha256(new TextEncoder().encode('wrong message'));
         const { result } = await contract.verifyECDSAEthereum(key1.compressed, sig, wrongHash);
         Assert.expect(result).toEqual(false);
@@ -144,7 +154,7 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
     await vm.it(
         'should verify Ethereum ECDSA with v=27/28 (EIP-155 style recovery id)',
         async () => {
-            const sig = signEthereum(testHash, key1.privateKey);
+            const sig = signEthereum(testMessage, key1.privateKey);
             // Convert v from 0/1 to 27/28
             sig[64] = sig[64] + 27;
             const { result } = await contract.verifyECDSAEthereum(key1.compressed, sig, testHash);
@@ -157,7 +167,7 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
     await vm.it(
         'should verify a valid Bitcoin ECDSA signature with compressed public key',
         async () => {
-            const sig = signBitcoin(testHash, key1.privateKey);
+            const sig = signBitcoin(testMessage, key1.privateKey);
             const { result } = await contract.verifyECDSABitcoin(key1.compressed, sig, testHash);
             Assert.expect(result).toEqual(true);
         },
@@ -166,7 +176,7 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
     await vm.it(
         'should verify a valid Bitcoin ECDSA signature with uncompressed public key',
         async () => {
-            const sig = signBitcoin(testHash, key1.privateKey);
+            const sig = signBitcoin(testMessage, key1.privateKey);
             const { result } = await contract.verifyECDSABitcoin(
                 key1.uncompressed,
                 sig,
@@ -179,20 +189,20 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
     await vm.it(
         'should verify a valid Bitcoin ECDSA signature with raw 64-byte public key',
         async () => {
-            const sig = signBitcoin(testHash, key1.privateKey);
+            const sig = signBitcoin(testMessage, key1.privateKey);
             const { result } = await contract.verifyECDSABitcoin(key1.raw, sig, testHash);
             Assert.expect(result).toEqual(true);
         },
     );
 
     await vm.it('should reject Bitcoin ECDSA signature with wrong public key', async () => {
-        const sig = signBitcoin(testHash, key1.privateKey);
+        const sig = signBitcoin(testMessage, key1.privateKey);
         const { result } = await contract.verifyECDSABitcoin(key2.compressed, sig, testHash);
         Assert.expect(result).toEqual(false);
     });
 
     await vm.it('should reject Bitcoin ECDSA signature with wrong message', async () => {
-        const sig = signBitcoin(testHash, key1.privateKey);
+        const sig = signBitcoin(testMessage, key1.privateKey);
         const wrongHash = sha256(new TextEncoder().encode('wrong message'));
         const { result } = await contract.verifyECDSABitcoin(key1.compressed, sig, wrongHash);
         Assert.expect(result).toEqual(false);
@@ -205,7 +215,7 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
         async () => {
             for (let i = 0; i < 5; i++) {
                 const key = generateKeyPair(`multi-key-eth-${i}`);
-                const sig = signEthereum(testHash, key.privateKey);
+                const sig = signEthereum(testMessage, key.privateKey);
                 const { result } = await contract.verifyECDSAEthereum(
                     key.compressed,
                     sig,
@@ -221,7 +231,7 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
         async () => {
             for (let i = 0; i < 5; i++) {
                 const key = generateKeyPair(`multi-key-btc-${i}`);
-                const sig = signBitcoin(testHash, key.privateKey);
+                const sig = signBitcoin(testMessage, key.privateKey);
                 const { result } = await contract.verifyECDSABitcoin(
                     key.compressed,
                     sig,
@@ -237,8 +247,9 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
     await vm.it('should verify Ethereum ECDSA with various message hashes', async () => {
         const messages = ['msg1', 'msg2', 'a longer test message', ''];
         for (const msg of messages) {
-            const hash = sha256(new TextEncoder().encode(msg));
-            const sig = signEthereum(hash, key1.privateKey);
+            const rawMsg = new TextEncoder().encode(msg);
+            const hash = sha256(rawMsg);
+            const sig = signEthereum(rawMsg, key1.privateKey);
             const { result } = await contract.verifyECDSAEthereum(key1.compressed, sig, hash);
             Assert.expect(result).toEqual(true);
         }
@@ -247,8 +258,9 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
     await vm.it('should verify Bitcoin ECDSA with various message hashes', async () => {
         const messages = ['msg1', 'msg2', 'a longer test message', ''];
         for (const msg of messages) {
-            const hash = sha256(new TextEncoder().encode(msg));
-            const sig = signBitcoin(hash, key1.privateKey);
+            const rawMsg = new TextEncoder().encode(msg);
+            const hash = sha256(rawMsg);
+            const sig = signBitcoin(rawMsg, key1.privateKey);
             const { result } = await contract.verifyECDSABitcoin(key1.compressed, sig, hash);
             Assert.expect(result).toEqual(true);
         }
@@ -257,13 +269,13 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
     // ─── Gas consumption ───
 
     await vm.it('should consume gas for Ethereum ECDSA verification', async () => {
-        const sig = signEthereum(testHash, key1.privateKey);
+        const sig = signEthereum(testMessage, key1.privateKey);
         const { gas } = await contract.verifyECDSAEthereum(key1.compressed, sig, testHash);
         Assert.expect(gas > 0n).toEqual(true);
     });
 
     await vm.it('should consume gas for Bitcoin ECDSA verification', async () => {
-        const sig = signBitcoin(testHash, key1.privateKey);
+        const sig = signBitcoin(testMessage, key1.privateKey);
         const { gas } = await contract.verifyECDSABitcoin(key1.compressed, sig, testHash);
         Assert.expect(gas > 0n).toEqual(true);
     });
@@ -273,7 +285,7 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
     await vm.it(
         'should reject Ethereum signature signed by key1 but verified against key2',
         async () => {
-            const sig = signEthereum(testHash, key1.privateKey);
+            const sig = signEthereum(testMessage, key1.privateKey);
             const { result } = await contract.verifyECDSAEthereum(key2.compressed, sig, testHash);
             Assert.expect(result).toEqual(false);
         },
@@ -282,7 +294,7 @@ await opnet('ECDSA Signature Verification', async (vm: OPNetUnit) => {
     await vm.it(
         'should reject Bitcoin signature signed by key1 but verified against key2',
         async () => {
-            const sig = signBitcoin(testHash, key1.privateKey);
+            const sig = signBitcoin(testMessage, key1.privateKey);
             const { result } = await contract.verifyECDSABitcoin(key2.compressed, sig, testHash);
             Assert.expect(result).toEqual(false);
         },
