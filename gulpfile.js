@@ -10,7 +10,7 @@ process.on('uncaughtException', function (err) {
     console.log('Caught exception: ', err);
 });
 
-const tsProject = ts.createProject('tsconfig.json');
+const tsProject = ts.createProject('tsconfig.build.json');
 
 function buildESM() {
     return tsProject

@@ -28,7 +28,11 @@
         "typeRoots": ["node_modules/@types"]
     },
     "include": [
-        "src/**/*.ts"
+        "src/**/*.ts",
+        "test/**/*.ts"
     ],
-    "exclude": ["node_modules"]
+    "exclude": [
+        "node_modules",
+        "test/e2e/contracts/*/contract/**"
+    ]
 }
