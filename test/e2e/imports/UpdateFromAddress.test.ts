@@ -1,4 +1,4 @@
-import { Address } from '@btc-vision/transaction';
+import { ABICoder, Address, BinaryWriter } from '@btc-vision/transaction';
 import { Assert, Blockchain, BytecodeManager, ContractRuntime, opnet, OPNetUnit } from '../../../src';
 import { UpgradeableContractRuntime } from '../contracts/upgradeable-contract/runtime/UpgradeableContractRuntime';
 
@@ -289,9 +289,10 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
 
     await vm.it('should consume more gas than a simple getValue call', async () => {
         // Measure gas for a simple call
-        const getValueCalldata = new (await import('@btc-vision/transaction')).BinaryWriter();
+        const abiCoder = new ABICoder();
+        const getValueCalldata = new BinaryWriter();
         getValueCalldata.writeSelector(
-            Number(`0x${contract.abiCoder.encodeSelector('getValue()')}`),
+            Number(`0x${abiCoder.encodeSelector('getValue()')}`),
         );
         const simpleResponse = await contract.execute({
             calldata: getValueCalldata.getBuffer(),

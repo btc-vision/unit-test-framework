@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "node",
+        "strict": false,
+        "skipLibCheck": true,
+        "noEmit": true,
+        "experimentalDecorators": true,
+        "lib": ["ESNext"]
+    },
+    "include": [
+        "test/e2e/contracts/*/contract/**/*.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}
