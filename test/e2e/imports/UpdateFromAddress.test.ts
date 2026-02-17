@@ -6,6 +6,7 @@ import {
     ContractRuntime,
     opnet,
     OPNetUnit,
+    StateHandler,
 } from '../../../src';
 import { UpgradeableContractRuntime } from '../contracts/upgradeable-contract/runtime/UpgradeableContractRuntime';
 
@@ -702,3 +703,141 @@ function areBytesEqual(arr1: Uint8Array, arr2: Uint8Array): boolean {
 
     return arr1.every((value, index) => value === arr2[index]);
 }
+
+// --- Malicious V2 contract that writes storage + emits events + reverts in onUpdate ---
+
+const MALICIOUS_V2_WASM_PATH =
+    './test/e2e/contracts/malicious-v2/contract/build/MaliciousV2.wasm';
+
+class MaliciousV2SourceRuntime extends ContractRuntime {
+    public constructor(deployer: Address, address: Address) {
+        super({
+            address: address,
+            deployer: deployer,
+            gasLimit: 150_000_000_000n,
+        });
+    }
+
+    protected handleError(error: Error): Error {
+        return new Error(`(malicious-v2 source) OP_NET: ${error.message}`);
+    }
+
+    protected defineRequiredBytecodes(): void {
+        BytecodeManager.loadBytecode(MALICIOUS_V2_WASM_PATH, this.address);
+    }
+}
+
+// The malicious V2 contract's onUpdate writes storage slot 0xff...00 = 0x42...00,
+// emits a "PhantomEvent", then reverts. These side effects MUST NOT leak.
+
+await opnet('Failed Phase 2 state isolation', async (vm: OPNetUnit) => {
+    let contract: UpgradeableContractRuntime;
+    let maliciousV2Source: MaliciousV2SourceRuntime;
+
+    const deployerAddress: Address = Blockchain.generateRandomAddress();
+    const contractAddress: Address = Blockchain.generateRandomAddress();
+    const maliciousV2Address: Address = Blockchain.generateRandomAddress();
+
+    vm.beforeEach(async () => {
+        Blockchain.dispose();
+        Blockchain.clearContracts();
+        await Blockchain.init();
+
+        contract = new UpgradeableContractRuntime(deployerAddress, contractAddress);
+        Blockchain.register(contract);
+        await contract.init();
+
+        maliciousV2Source = new MaliciousV2SourceRuntime(deployerAddress, maliciousV2Address);
+        Blockchain.register(maliciousV2Source);
+        await maliciousV2Source.init();
+
+        Blockchain.txOrigin = deployerAddress;
+        Blockchain.msgSender = deployerAddress;
+    });
+
+    vm.afterEach(() => {
+        contract.dispose();
+        maliciousV2Source.dispose();
+        Blockchain.dispose();
+    });
+
+    await vm.it('should NOT leak storage writes from failed Phase 2 onUpdate', async () => {
+        // Queue upgrade to malicious V2 (Phase 1 succeeds on current bytecode)
+        await contract.upgrade(maliciousV2Address);
+
+        // Advance block to trigger Phase 2
+        Blockchain.mineBlock();
+
+        // Phase 2 runs malicious V2's onUpdate which:
+        //   1. Writes storage slot 0xff...00 = 0x42...00
+        //   2. Emits PhantomEvent
+        //   3. Reverts
+        // Phase 2 should fail and revert bytecode.
+
+        // Execute a getValue call — this triggers Phase 2 internally
+        const abiCoder = new ABICoder();
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(Number(`0x${abiCoder.encodeSelector('getValue()')}`));
+        const response = await contract.execute({ calldata: calldata.getBuffer() });
+
+        // Contract should still be on v1 bytecode (Phase 2 failed, reverted)
+        Assert.expect(response.status).toEqual(0);
+
+        // The malicious storage write (slot 0xff...00) must NOT exist in global state
+        const poisonKey = 0xffn << 248n; // 0xff followed by 31 zero bytes
+        const globalValue = StateHandler.globalLoad(contractAddress, poisonKey);
+        Assert.expect(globalValue).toEqual(undefined);
+
+        // Temp states for this contract must be clean (pushed to global already, so check global)
+        // If the fix works, the poisoned write was cleared before it could be committed
+        Assert.expect(StateHandler.globalHas(contractAddress, poisonKey)).toEqual(false);
+    });
+
+    await vm.it('should NOT leak events from failed Phase 2 onUpdate', async () => {
+        await contract.upgrade(maliciousV2Address);
+        Blockchain.mineBlock();
+
+        const abiCoder = new ABICoder();
+        const calldata = new BinaryWriter();
+        calldata.writeSelector(Number(`0x${abiCoder.encodeSelector('getValue()')}`));
+        const response = await contract.execute({ calldata: calldata.getBuffer() });
+
+        // No "PhantomEvent" should appear in the transaction events
+        const phantomEvents = response.events.filter(
+            (e) => e.eventType === 'PhantomEvent',
+        );
+        Assert.expect(phantomEvents.length).toEqual(0);
+    });
+
+    await vm.it('should charge gas for failed Phase 2 onUpdate', async () => {
+        await contract.upgrade(maliciousV2Address);
+        Blockchain.mineBlock();
+
+        // Baseline: normal getValue gas without any pending upgrade
+        const abiCoder = new ABICoder();
+
+        // First call: triggers failed Phase 2 + getValue
+        const calldata1 = new BinaryWriter();
+        calldata1.writeSelector(Number(`0x${abiCoder.encodeSelector('getValue()')}`));
+        const firstResponse = await contract.execute({ calldata: calldata1.getBuffer() });
+        const gasWithFailedPhase2 = firstResponse.usedGas;
+
+        // Second call: no pending upgrade, clean getValue
+        const calldata2 = new BinaryWriter();
+        calldata2.writeSelector(Number(`0x${abiCoder.encodeSelector('getValue()')}`));
+        const secondResponse = await contract.execute({ calldata: calldata2.getBuffer() });
+        const baselineGas = secondResponse.usedGas;
+
+        // Failed Phase 2 must still cost gas — first call should be more expensive
+        Assert.expect(gasWithFailedPhase2 > baselineGas).toEqual(true);
+    });
+
+    await vm.it('should revert bytecode after failed Phase 2 (still v1)', async () => {
+        await contract.upgrade(maliciousV2Address);
+        Blockchain.mineBlock();
+
+        // getValue should return 1 (v1) — Phase 2 failed, bytecode reverted
+        const value = await contract.getValue();
+        Assert.expect(value).toEqual(1);
+    });
+});

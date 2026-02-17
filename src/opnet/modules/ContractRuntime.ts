@@ -487,6 +487,7 @@ export class ContractRuntime extends Logger {
         }
 
         const previousBytecode = this._bytecode;
+        const previousContract = this._contract;
         const calldata = this._pendingUpgradeCalldata || Buffer.alloc(0);
 
         // Swap to the new bytecode first
@@ -502,32 +503,53 @@ export class ContractRuntime extends Logger {
             this._hasUpgradedInCurrentExecution = true;
 
             tempContract = new RustContract(this.generateParams(true));
-            const savedContract = this._contract;
             this._contract = tempContract;
             this.setEnvironment(Blockchain.msgSender, Blockchain.txOrigin);
 
             const response = await tempContract.onUpdate(calldata);
-            this._contract = savedContract;
+
+            // Capture gas BEFORE status check so failed Phase 2 is still charged
+            phase2GasUsed = response.gasUsed;
 
             if (response.status !== 0) {
                 throw new Error('OP_NET: onUpdate failed on new bytecode');
             }
-
-            phase2GasUsed = response.gasUsed;
         } catch (e) {
             // onUpdate failed — revert bytecode swap
-            this._bytecode = previousBytecode;
-            if (previousBytecode) {
-                BytecodeManager.forceSetBytecode(this.address, previousBytecode);
-            } else {
-                BytecodeManager.removeBytecode(this.address);
+            if (!previousBytecode) {
+                throw new Error(
+                    'OP_NET: FATAL — upgrade revert with no previous bytecode (impossible state)',
+                    { cause: e },
+                );
             }
+
+            this._bytecode = previousBytecode;
+            BytecodeManager.forceSetBytecode(this.address, previousBytecode);
             Blockchain.contractManager.destroyCache();
+
+            // Clean up dirty state from failed Phase 2:
+            // 1. Temp storage writes from store() calls during failed onUpdate
+            StateHandler.clearTemporaryStates(this.address);
+            // 2. Events emitted during failed onUpdate
+            this.events = [];
+            this.totalEventLength = 0;
+
+            // If we didn't capture gas from response (onUpdate threw entirely),
+            // try to read it from the temp contract's VM state
+            if (phase2GasUsed === 0n && tempContract) {
+                try {
+                    phase2GasUsed = tempContract.getUsedGas();
+                } catch {
+                    // VM state unavailable — charge nothing
+                }
+            }
 
             if (this.logUnexpectedErrors) {
                 this.warn(`onUpdate failed, upgrade reverted: ${(e as Error).message}`);
             }
         } finally {
+            // Always restore original contract reference
+            this._contract = previousContract;
             this._hasUpgradedInCurrentExecution = false;
 
             if (tempContract) {

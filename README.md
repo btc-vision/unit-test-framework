@@ -27,7 +27,7 @@ Check out the full documentation in [`/docs`](./docs)!
 - [Assertions](./docs/api-reference/assertions.md) - Static & fluent assertion API
 - [Blockchain API](./docs/api-reference/blockchain.md) - Blockchain simulator
 - [Contract Runtime](./docs/api-reference/contract-runtime.md) - Custom contract wrappers
-- [Advanced Topics](./docs/advanced/cross-contract-calls.md) - Upgrades, signatures, gas profiling
+- [Advanced Topics](./docs/advanced/cross-contract-calls.md) - Upgrades, signatures, gas profiling, consensus rules
 - [Examples](./docs/examples/nativeswap-testing.md) - Real-world test examples
 - [API Reference](./docs/api-reference/types-interfaces.md) - Full type reference
 
@@ -96,6 +96,31 @@ npm install
 npm run build
 ```
 
+### Running Tests
+
+```bash
+# Run the full test suite (builds test contracts + runs all tests)
+npm test
+
+# Run a specific test file
+npm run test:update-from-address
+npm run test:storage
+npm run test:gas
+npm run test:ecdsa
+```
+
+### Test Contracts
+
+End-to-end test contracts live in `test/e2e/contracts/`. Each contract has:
+- `contract/` - AssemblyScript source and `asconfig.json`
+- `runtime/` - TypeScript `ContractRuntime` wrapper
+
+Build test contracts separately:
+
+```bash
+npm run build:test-contract
+```
+
 ## Contributing
 
 1. Fork the repository
@@ -108,6 +133,10 @@ npm run build
 
 - **Bugs**: Open an issue on GitHub
 - **Security**: See [SECURITY.md](./SECURITY.md) - do not open public issues for vulnerabilities
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for release history.
 
 ## License
 
