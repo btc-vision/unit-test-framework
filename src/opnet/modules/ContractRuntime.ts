@@ -1164,13 +1164,7 @@ export class ContractRuntime extends Logger {
     }
 
     private getErrorAsBuffer(error: Error | string | undefined): Uint8Array {
-        const errorWriter = new BinaryWriter();
-        errorWriter.writeSelector(0x63739d5c);
-        errorWriter.writeStringWithLength(
-            typeof error === 'string' ? error : error?.message || 'Unknown error',
-        );
-
-        return errorWriter.getBuffer();
+        return RustContract.getErrorAsBuffer(error);
     }
 
     private onLog(data: Buffer | Uint8Array): void {
