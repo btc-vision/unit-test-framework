@@ -110,7 +110,7 @@ export class ContractRuntime extends Logger {
         try {
             this.deployer.tweakedPublicKeyToBuffer();
         } catch (e) {
-            throw new Error('Deployer address does not have a valid tweaked public key');
+            throw new Error('Deployer address does not have a valid tweaked public key', { cause: e });
         }
     }
 

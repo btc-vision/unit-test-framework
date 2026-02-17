@@ -27,6 +27,36 @@ Key points:
 - Storage is **preserved** across upgrades
 - Only **one upgrade per block** is allowed
 - The contract **address stays the same**
+- Cross-contract calls are **blocked** after upgrading in the same execution
+
+---
+
+## Internal Mechanism
+
+The upgrade process has two phases:
+
+### Phase 1: Upgrade Request (`updateFromAddress`)
+
+When a contract calls `updateFromAddress`:
+
+1. A **temporary WASM instance** is created with the **current** bytecode (using `bypassCache: true` to avoid reusing the paused instance)
+2. `onUpdate(calldata)` is called on this temporary instance, giving the current contract a chance to run migration logic
+3. If `onUpdate` succeeds, the new bytecode is **queued** as a pending upgrade for the current block
+4. The `_hasUpgradedInCurrentExecution` flag is set, **blocking** any further cross-contract calls (`Blockchain.call`) in the same transaction
+
+### Phase 2: Bytecode Swap (`applyPendingBytecodeUpgrade`)
+
+On the **next block** (when `Blockchain.blockNumber > pendingBytecodeBlock`):
+
+1. The bytecode is swapped to the new version
+2. A **temporary WASM instance** is created with the **new** bytecode (using `bypassCache: true` to ensure the fresh bytecode is loaded without hitting the module cache)
+3. `onUpdate(calldata)` is called on the new bytecode, allowing the new version to run its own initialization/migration logic
+4. If `onUpdate` fails on the new bytecode, the **upgrade is reverted** back to the previous bytecode
+5. The pending upgrade state is cleared
+
+### Response Format
+
+The `updateFromAddress` response uses the format: `[bytecodeLength(4) | executionCost(8) | exitStatus(4) | exitData]` (no address prefix, unlike `deployContractAtAddress`).
 
 ---
 
