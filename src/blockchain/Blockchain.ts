@@ -132,6 +132,7 @@ class BlockchainBase extends Logger {
             this.storeJSFunction,
             this.callJSFunction,
             this.deployContractAtAddressJSFunction,
+            this.updateFromAddress,
             this.logJSFunction,
             this.emitJSFunction,
             this.inputsJSFunction,
@@ -203,9 +204,14 @@ class BlockchainBase extends Logger {
     public clearContracts(): void {
         StateHandler.purgeAll();
         ConsensusManager.default();
+        BytecodeManager.clear();
 
         this.addressMLDSACache.clear();
         this.contracts.clear();
+
+        if (this._contractManager) {
+            this._contractManager.destroyCache();
+        }
     }
 
     public generateAddress(deployer: Address, salt: Buffer, from: Address): Address {
@@ -417,16 +423,31 @@ class BlockchainBase extends Logger {
     ): Promise<Buffer | Uint8Array> => {
         if (this.enableDebug) console.log('DEPLOY', value.buffer);
 
-        const u = new Uint8Array(value.buffer);
-        const buf = Buffer.from(u.buffer, u.byteOffset, u.byteLength);
-
+        const buf = Buffer.from(Array.from(value.buffer));
         const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
-
         if (!c) {
-            throw new Error('Binding not found');
+            throw new Error('Binding not found (deploy)');
         }
 
         return c.deployContractAtAddress(buf);
+    };
+
+    private updateFromAddress: (
+        _: never,
+        result: ThreadSafeJsImportResponse,
+    ) => Promise<Buffer | Uint8Array> = (
+        _: never,
+        value: ThreadSafeJsImportResponse,
+    ): Promise<Buffer | Uint8Array> => {
+        if (this.enableDebug) console.log('DEPLOY', value.buffer);
+
+        const buf = Buffer.from(Array.from(value.buffer));
+        const c = this.bindings.get(BigInt(`${value.contractId}`)); // otherwise unsafe.
+        if (!c) {
+            throw new Error('Binding not found (deploy)');
+        }
+
+        return c.updateFromAddress(buf);
     };
 
     private logJSFunction: (_: never, result: ThreadSafeJsImportResponse) => Promise<void> = (

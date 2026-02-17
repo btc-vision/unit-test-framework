@@ -1,3 +1,4 @@
+import { toHex } from '@btc-vision/bitcoin';
 import { Address, AddressMap } from '@btc-vision/transaction';
 import { performance } from 'perf_hooks';
 import crypto from 'crypto';
@@ -268,7 +269,7 @@ class HexKeyCache implements CacheImplementation {
     }
 
     private getKey(address: Address): string {
-        return address.toBuffer().toString('hex');
+        return toHex(address.toBuffer());
     }
 }
 

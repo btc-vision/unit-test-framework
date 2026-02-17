@@ -13,7 +13,7 @@ await opnet('Dos tests', async (vm: OPNetUnit) => {
         Blockchain.clearContracts();
         await Blockchain.init();
 
-        contract = new TestContractRuntime(deployerAddress, contractAddress, 150_000_000_000n); //15_000_000_000_001n
+        contract = new TestContractRuntime(deployerAddress, contractAddress, 150_000_000_000n);
         Blockchain.register(contract);
         await contract.init();
 
@@ -26,15 +26,17 @@ await opnet('Dos tests', async (vm: OPNetUnit) => {
         Blockchain.dispose();
     });
 
-    await vm.it('memory', async () => {
+    await vm.it('should not crash when querying own account type', async () => {
         const targetAddress = contract.address;
 
         const t = Date.now();
-        await Assert.throwsAsync(async () => {
-            await contract.accountTypeCall(targetAddress);
-        });
-
+        const accountType = await contract.accountTypeCall(targetAddress);
         const elapsed = Date.now() - t;
-        console.log(`Execution time: ${elapsed} ms`);
+
+        // Contract address should return account type 1 (contract)
+        Assert.expect(accountType).toEqual(1);
+
+        // Should complete in reasonable time (no DoS)
+        Assert.expect(elapsed < 5000).toEqual(true);
     });
 });

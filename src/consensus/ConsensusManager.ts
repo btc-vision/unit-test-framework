@@ -16,7 +16,8 @@ class BaseConsensusManager extends Logger {
 
     public default(): void {
         this.consensusRules.reset();
-        this.consensusRules.insertFlag(ConsensusRules.UNSAFE_QUANTUM_SIGNATURES_ALLOWED);
+        this.consensusRules.insertFlag(ConsensusRules.ALLOW_CLASSICAL_SIGNATURES);
+        this.consensusRules.insertFlag(ConsensusRules.UPDATE_CONTRACT_BY_ADDRESS);
     }
 }
 

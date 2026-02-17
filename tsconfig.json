@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
-        "module": "esnext",
-        "target": "esnext",
+        "module": "ESNext",
+        "target": "ESNext",
         "declaration": true,
         "noImplicitAny": true,
         "removeComments": false,
@@ -13,14 +13,7 @@
         "moduleDetection": "force",
         "allowImportingTsExtensions": false,
         "experimentalDecorators": true,
-        "lib": [
-            "es6",
-            "es2020",
-            "es2021",
-            "es2022",
-            "esnext",
-            "dom"
-        ],
+        "lib": ["ESNext"],
         "strict": true,
         "strictNullChecks": true,
         "strictFunctionTypes": true,
@@ -32,23 +25,14 @@
         "incremental": true,
         "allowSyntheticDefaultImports": true,
         "outDir": "build",
-        "typeRoots": [
-            "node_modules/@types"
-        ]
+        "typeRoots": ["node_modules/@types"]
     },
     "include": [
         "src/**/*.ts",
-        "src/*",
-        "src/**/*.js",
-        "src/*.ts",
-        "src/*.js",
-        "src/*.cjs",
-		"test/**/*.ts",
-		"test/*.ts"
-	],
+        "test/**/*.ts"
+    ],
     "exclude": [
-        "test/**/*.ts",
-        "test/**/*.js",
-        "node_modules"
+        "node_modules",
+        "test/e2e/contracts/*/contract/**"
     ]
 }

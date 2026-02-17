@@ -4,9 +4,9 @@
 export class ConsensusRules {
     // Flag constants
     public static readonly NONE: bigint = 0b00000000n;
-    public static readonly UNSAFE_QUANTUM_SIGNATURES_ALLOWED: bigint = 0b00000001n;
+    public static readonly ALLOW_CLASSICAL_SIGNATURES: bigint = 0b00000001n;
 
-    public static readonly RESERVED_FLAG_1: bigint = 0b00000010n;
+    public static readonly UPDATE_CONTRACT_BY_ADDRESS: bigint = 0b00000010n;
     public static readonly RESERVED_FLAG_2: bigint = 0b00000100n;
 
     private value: bigint;
@@ -223,7 +223,7 @@ export class ConsensusRules {
     }
 
     public unsafeSignaturesAllowed(): boolean {
-        return this.containsFlag(ConsensusRules.UNSAFE_QUANTUM_SIGNATURES_ALLOWED);
+        return this.containsFlag(ConsensusRules.ALLOW_CLASSICAL_SIGNATURES);
     }
 }
 
