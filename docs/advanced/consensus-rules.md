@@ -19,6 +19,7 @@ import { ConsensusRules, ConsensusManager } from '@btc-vision/unit-test-framewor
 | `NONE` | `0b00000000` | No flags |
 | `ALLOW_CLASSICAL_SIGNATURES` | `0b00000001` | Allow Schnorr/ECDSA (non-quantum) |
 | `UPDATE_CONTRACT_BY_ADDRESS` | `0b00000010` | Allow contract upgrades |
+| `RESERVED_FLAG_2` | `0b00000100` | Reserved for future use |
 
 ### Creating Rules
 

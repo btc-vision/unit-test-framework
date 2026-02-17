@@ -17,7 +17,7 @@ import { StateHandler } from '@btc-vision/unit-test-framework';
 Load state from external sources (e.g., mainnet state dumps):
 
 ```typescript
-import { FastMap } from '@btc-vision/unit-test-framework';
+import { FastMap } from '@btc-vision/transaction';
 
 // Create a state map (pointer -> value)
 const states = new FastMap<bigint, bigint>();

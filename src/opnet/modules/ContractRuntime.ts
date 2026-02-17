@@ -404,7 +404,7 @@ export class ContractRuntime extends Logger {
 
     protected async executeCall(executionParameters: ExecutionParameters): Promise<CallResponse> {
         // Apply pending bytecode upgrade if block has advanced
-        await this.applyPendingBytecodeUpgrade();
+        const phase2Gas = await this.applyPendingBytecodeUpgrade();
 
         // Deploy if not deployed.
         const deployment = await this.deployContract(false);
@@ -421,7 +421,7 @@ export class ContractRuntime extends Logger {
             }
         }
 
-        this.gasUsed = executionParameters.gasUsed || 0n;
+        this.gasUsed = (executionParameters.gasUsed || 0n) + phase2Gas;
         this.memoryPagesUsed = executionParameters.memoryPagesUsed || 0n;
 
         // Backup states
@@ -477,13 +477,13 @@ export class ContractRuntime extends Logger {
         });
     }
 
-    private async applyPendingBytecodeUpgrade(): Promise<void> {
+    private async applyPendingBytecodeUpgrade(): Promise<bigint> {
         if (
             !this._pendingBytecode ||
             this._pendingBytecodeBlock === undefined ||
             Blockchain.blockNumber <= this._pendingBytecodeBlock
         ) {
-            return;
+            return 0n;
         }
 
         const previousBytecode = this._bytecode;
@@ -496,7 +496,11 @@ export class ContractRuntime extends Logger {
 
         // Call onUpdate on the NEW bytecode, bypassing precomputation cache
         let tempContract: RustContract | undefined;
+        let phase2GasUsed: bigint = 0n;
         try {
+            // Block cross-contract calls and nested upgrades during Phase 2 onUpdate
+            this._hasUpgradedInCurrentExecution = true;
+
             tempContract = new RustContract(this.generateParams(true));
             const savedContract = this._contract;
             this._contract = tempContract;
@@ -508,11 +512,15 @@ export class ContractRuntime extends Logger {
             if (response.status !== 0) {
                 throw new Error('OP_NET: onUpdate failed on new bytecode');
             }
+
+            phase2GasUsed = response.gasUsed;
         } catch (e) {
             // onUpdate failed — revert bytecode swap
             this._bytecode = previousBytecode;
             if (previousBytecode) {
                 BytecodeManager.forceSetBytecode(this.address, previousBytecode);
+            } else {
+                BytecodeManager.removeBytecode(this.address);
             }
             Blockchain.contractManager.destroyCache();
 
@@ -520,6 +528,8 @@ export class ContractRuntime extends Logger {
                 this.warn(`onUpdate failed, upgrade reverted: ${(e as Error).message}`);
             }
         } finally {
+            this._hasUpgradedInCurrentExecution = false;
+
             if (tempContract) {
                 try {
                     tempContract.dispose();
@@ -532,6 +542,8 @@ export class ContractRuntime extends Logger {
             this._pendingBytecodeBlock = undefined;
             this._pendingUpgradeCalldata = undefined;
         }
+
+        return phase2GasUsed;
     }
 
     private cancelPendingBytecodeUpgrade(): void {
@@ -632,11 +644,23 @@ export class ContractRuntime extends Logger {
     }
 
     private async updateFromAddress(data: Buffer): Promise<Buffer | Uint8Array> {
+        if (this._hasUpgradedInCurrentExecution) {
+            throw new Error(
+                'OP_NET: Cannot upgrade while another upgrade is in progress',
+            );
+        }
+
         try {
             const reader = new BinaryReader(data);
             this.gasUsed = reader.readU64();
             const sourceAddress: Address = reader.readAddress();
             const calldata: Buffer = Buffer.from(reader.readBytes(reader.bytesLeft() | 0));
+
+            if (calldata.byteLength > CONSENSUS.COMPRESSION.MAX_DECOMPRESSED_SIZE) {
+                throw new Error(
+                    `OP_NET: Upgrade calldata exceeds maximum decompressed size (${calldata.byteLength} > ${CONSENSUS.COMPRESSION.MAX_DECOMPRESSED_SIZE})`,
+                );
+            }
 
             // Enforce one upgrade per block per contract
             if (
@@ -692,6 +716,7 @@ export class ContractRuntime extends Logger {
                 // Schedule bytecode replacement for the next block
                 this._pendingBytecode = newBytecode;
                 this._pendingBytecodeBlock = Blockchain.blockNumber;
+                this._pendingUpgradeCalldata = calldata;
                 upgradeCommitted = true;
 
                 const used = response.gasUsed - gasBefore;
@@ -733,6 +758,12 @@ export class ContractRuntime extends Logger {
     }
 
     private async deployContractAtAddress(data: Buffer): Promise<Buffer | Uint8Array> {
+        if (this._hasUpgradedInCurrentExecution) {
+            throw new Error(
+                'OP_NET: Cannot deploy contracts after upgrading bytecode in the same execution',
+            );
+        }
+
         try {
             const reader = new BinaryReader(data);
             this.gasUsed = reader.readU64();
