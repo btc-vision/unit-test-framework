@@ -82,6 +82,10 @@ export class ContractRuntime extends Logger {
     // debug
     private readonly isDebugMode = true;
     private readonly proofFeatureEnabled = false;
+    private _pendingBytecode: Buffer | undefined;
+    private _pendingBytecodeBlock: bigint | undefined;
+    private _pendingUpgradeCalldata: Buffer | undefined;
+    private _hasUpgradedInCurrentExecution: boolean = false;
 
     protected constructor(details: ContractDetails) {
         super();
@@ -110,7 +114,9 @@ export class ContractRuntime extends Logger {
         try {
             this.deployer.tweakedPublicKeyToBuffer();
         } catch (e) {
-            throw new Error('Deployer address does not have a valid tweaked public key', { cause: e });
+            throw new Error('Deployer address does not have a valid tweaked public key', {
+                cause: e,
+            });
         }
     }
 
@@ -125,10 +131,6 @@ export class ContractRuntime extends Logger {
     }
 
     protected _bytecode: Buffer | undefined;
-    private _pendingBytecode: Buffer | undefined;
-    private _pendingBytecodeBlock: bigint | undefined;
-    private _pendingUpgradeCalldata: Buffer | undefined;
-    private _hasUpgradedInCurrentExecution: boolean = false;
 
     protected get bytecode(): Buffer {
         if (!this._bytecode) throw new Error(`Bytecode not found for ${this.address}`);
@@ -477,6 +479,85 @@ export class ContractRuntime extends Logger {
         });
     }
 
+    protected calculateGasCostSave(response: CallResponse): bigint {
+        if (response.usedGas !== this.gasUsed) {
+            throw new Error('OP_NET: gas used mismatch');
+        }
+
+        let cost: bigint = 0n;
+        for (const contract of this.callStack) {
+            const states = StateHandler.getTemporaryStates(contract);
+
+            for (const [key, value] of states) {
+                const currentValue = StateHandler.globalLoad(contract, key);
+
+                if (currentValue === undefined) {
+                    cost += NEW_STORAGE_SLOT_GAS_COST;
+                } else if (currentValue !== value) {
+                    cost += UPDATED_STORAGE_SLOT_GAS_COST;
+                }
+
+                if (this.gasMax < this.gasUsed + cost) {
+                    throw new Error('out of gas while saving state');
+                }
+            }
+        }
+
+        response.usedGas = this.gasUsed + cost;
+
+        return response.usedGas;
+    }
+
+    protected handleError(error: Error): Error {
+        return new Error(`(in: ${this.constructor.name}) OP_NET: ${error}`);
+    }
+
+    protected defineRequiredBytecodes(): void {
+        if (this.potentialBytecode) {
+            this._bytecode = this.potentialBytecode;
+
+            BytecodeManager.setBytecode(this.address, this.potentialBytecode);
+        } else {
+            throw new Error('Not implemented');
+        }
+    }
+
+    protected loadContract(): void {
+        try {
+            this._contract = new RustContract(this.generateParams());
+        } catch (e) {
+            if (this._contract) {
+                try {
+                    this._contract.dispose();
+                } catch {}
+            }
+
+            this.warn(`Rust panicked during instantiation: ${e}`);
+
+            throw e;
+        }
+    }
+
+    /**
+     * Calls `this.execute()` with the provided arguments, returning the
+     * resulting `response` if the call is successful, throwing otherwise.
+     *
+     * @throws if contract execution reverts
+     *
+     * @returns Promise<CallResponse> the buffer returned by the contract
+     */
+    protected async executeThrowOnError(
+        executionParameters: ExecutionParameters,
+    ): Promise<CallResponse> {
+        const result = await this.execute(executionParameters);
+        if (result.error) {
+            const errorMessage = result.error ? result.error.message : 'Unknown error occurred';
+            throw new Error(errorMessage);
+        }
+
+        return result;
+    }
+
     private async applyPendingBytecodeUpgrade(): Promise<bigint> {
         if (
             !this._pendingBytecode ||
@@ -574,85 +655,6 @@ export class ContractRuntime extends Logger {
         this._pendingUpgradeCalldata = undefined;
     }
 
-    protected calculateGasCostSave(response: CallResponse): bigint {
-        if (response.usedGas !== this.gasUsed) {
-            throw new Error('OP_NET: gas used mismatch');
-        }
-
-        let cost: bigint = 0n;
-        for (const contract of this.callStack) {
-            const states = StateHandler.getTemporaryStates(contract);
-
-            for (const [key, value] of states) {
-                const currentValue = StateHandler.globalLoad(contract, key);
-
-                if (currentValue === undefined) {
-                    cost += NEW_STORAGE_SLOT_GAS_COST;
-                } else if (currentValue !== value) {
-                    cost += UPDATED_STORAGE_SLOT_GAS_COST;
-                }
-
-                if (this.gasMax < this.gasUsed + cost) {
-                    throw new Error('out of gas while saving state');
-                }
-            }
-        }
-
-        response.usedGas = this.gasUsed + cost;
-
-        return response.usedGas;
-    }
-
-    protected handleError(error: Error): Error {
-        return new Error(`(in: ${this.constructor.name}) OP_NET: ${error}`);
-    }
-
-    protected defineRequiredBytecodes(): void {
-        if (this.potentialBytecode) {
-            this._bytecode = this.potentialBytecode;
-
-            BytecodeManager.setBytecode(this.address, this.potentialBytecode);
-        } else {
-            throw new Error('Not implemented');
-        }
-    }
-
-    protected loadContract(): void {
-        try {
-            this._contract = new RustContract(this.generateParams());
-        } catch (e) {
-            if (this._contract) {
-                try {
-                    this._contract.dispose();
-                } catch {}
-            }
-
-            this.warn(`Rust panicked during instantiation: ${e}`);
-
-            throw e;
-        }
-    }
-
-    /**
-     * Calls `this.execute()` with the provided arguments, returning the
-     * resulting `response` if the call is successful, throwing otherwise.
-     *
-     * @throws if contract execution reverts
-     *
-     * @returns Promise<CallResponse> the buffer returned by the contract
-     */
-    protected async executeThrowOnError(
-        executionParameters: ExecutionParameters,
-    ): Promise<CallResponse> {
-        const result = await this.execute(executionParameters);
-        if (result.error) {
-            const errorMessage = result.error ? result.error.message : 'Unknown error occurred';
-            throw new Error(errorMessage);
-        }
-
-        return result;
-    }
-
     private getGasUsed(): bigint {
         try {
             if (this._contract) {
@@ -667,9 +669,7 @@ export class ContractRuntime extends Logger {
 
     private async updateFromAddress(data: Buffer): Promise<Buffer | Uint8Array> {
         if (this._hasUpgradedInCurrentExecution) {
-            throw new Error(
-                'OP_NET: Cannot upgrade while another upgrade is in progress',
-            );
+            throw new Error('OP_NET: Cannot upgrade while another upgrade is in progress');
         }
 
         try {
@@ -713,11 +713,9 @@ export class ContractRuntime extends Logger {
                 this.setEnvironment(Blockchain.msgSender, Blockchain.txOrigin);
 
                 let error: Error | undefined;
-                const response = await tempContract
-                    .onUpdate(calldata)
-                    .catch((e: unknown) => {
-                        error = e as Error;
-                    });
+                const response = await tempContract.onUpdate(calldata).catch((e: unknown) => {
+                    error = e as Error;
+                });
 
                 if (error) {
                     throw error;
@@ -1178,6 +1176,8 @@ export class ContractRuntime extends Logger {
         switch (Blockchain.network.bech32) {
             case bitcoin.networks.bitcoin.bech32:
                 return BitcoinNetworkRequest.Mainnet;
+            case bitcoin.networks.opnetTestnet.bech32:
+                return BitcoinNetworkRequest.OPNetTestnet;
             case bitcoin.networks.testnet.bech32:
                 return BitcoinNetworkRequest.Testnet;
             case bitcoin.networks.regtest.bech32:
@@ -1197,6 +1197,8 @@ export class ContractRuntime extends Logger {
                 return '000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f';
             case BitcoinNetworkRequest.Testnet:
                 return '000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943';
+            case BitcoinNetworkRequest.OPNetTestnet:
+                return '0000017f85106b1feeaf2f70f1e2b805985bb575f88f9b0ba5753d2f3cf13273';
             case BitcoinNetworkRequest.Regtest:
                 return '0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206';
             default:
