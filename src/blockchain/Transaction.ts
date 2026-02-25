@@ -60,6 +60,8 @@ export function generateTransactionId(): Uint8Array {
     return id;
 }
 
+const COIN_MAX: bigint = 21_000_000n * 100_000_000n; // 21 million coins, each with 8 decimals
+
 export class Transaction {
     public constructor(
         public readonly id: Uint8Array,
@@ -96,6 +98,10 @@ export class Transaction {
     }
 
     public addOutput(value: bigint, receiver: string | undefined, scriptPubKey?: Uint8Array): void {
+        if (value < 0n || value > COIN_MAX) {
+            throw new Error(`Output value ${value} is out of range.`);
+        }
+
         this.outputs.push(
             new TransactionOutput({
                 index: this.outputs.length,
@@ -176,6 +182,10 @@ export class Transaction {
                 }
 
                 writer.writeStringWithLength(output.to);
+            }
+
+            if (output.value < 0n || output.value > COIN_MAX) {
+                throw new Error(`Output value ${output.value} is out of range.`);
             }
 
             writer.writeU64(output.value);
