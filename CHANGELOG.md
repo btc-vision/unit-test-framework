@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.0.0-rc.4] - 2026-03-08
+
+- No changes
+
+
 ## [v1.0.0-rc.3] - 2026-02-25
 
 - No changes
