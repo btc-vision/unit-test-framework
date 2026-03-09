@@ -804,7 +804,7 @@ await opnet('Failed Phase 2 state isolation', async (vm: OPNetUnit) => {
 
         // No "PhantomEvent" should appear in the transaction events
         const phantomEvents = response.events.filter(
-            (e) => e.eventType === 'PhantomEvent',
+            (e) => e.type === 'PhantomEvent',
         );
         Assert.expect(phantomEvents.length).toEqual(0);
     });
