@@ -1,5 +1,5 @@
 import { Blockchain } from '@btc-vision/btc-runtime/runtime';
-import { UpgradeableContractV2 } from './UpgradeableContractV2';
+import { UpdatableContractV2 } from './UpdatableContractV2';
 import { revertOnError } from '@btc-vision/btc-runtime/runtime/abort/abort';
 
 // DO NOT TOUCH TO THIS.
@@ -7,7 +7,7 @@ Blockchain.contract = () => {
     // ONLY CHANGE THE CONTRACT CLASS NAME.
     // DO NOT ADD CUSTOM LOGIC HERE.
 
-    return new UpgradeableContractV2();
+    return new UpdatableContractV2();
 };
 
 // VERY IMPORTANT

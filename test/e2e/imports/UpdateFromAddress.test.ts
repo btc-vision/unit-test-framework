@@ -8,7 +8,7 @@ import {
     OPNetUnit,
     StateHandler,
 } from '../../../src';
-import { UpgradeableContractRuntime } from '../contracts/upgradeable-contract/runtime/UpgradeableContractRuntime';
+import { UpdatableContractRuntime } from '../contracts/updatable-contract/runtime/UpdatableContractRuntime';
 
 const V2_WASM_PATH =
     './test/e2e/contracts/upgradeable-contract-v2/contract/build/UpgradeableContractV2.wasm';
@@ -32,7 +32,7 @@ class V2SourceContractRuntime extends ContractRuntime {
 }
 
 await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
-    let contract: UpgradeableContractRuntime;
+    let contract: UpdatableContractRuntime;
     let v2Source: V2SourceContractRuntime;
 
     const deployerAddress: Address = Blockchain.generateRandomAddress();
@@ -44,7 +44,7 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
         Blockchain.clearContracts();
         await Blockchain.init();
 
-        contract = new UpgradeableContractRuntime(deployerAddress, contractAddress);
+        contract = new UpdatableContractRuntime(deployerAddress, contractAddress);
         Blockchain.register(contract);
         await contract.init();
 
@@ -433,7 +433,7 @@ await opnet('BytecodeManager targeted removal', async (vm: OPNetUnit) => {
 });
 
 await opnet('Upgrade lifecycle edge cases', async (vm: OPNetUnit) => {
-    let contract: UpgradeableContractRuntime;
+    let contract: UpdatableContractRuntime;
     let v2Source: V2SourceContractRuntime;
 
     const deployerAddress: Address = Blockchain.generateRandomAddress();
@@ -445,7 +445,7 @@ await opnet('Upgrade lifecycle edge cases', async (vm: OPNetUnit) => {
         Blockchain.clearContracts();
         await Blockchain.init();
 
-        contract = new UpgradeableContractRuntime(deployerAddress, contractAddress);
+        contract = new UpdatableContractRuntime(deployerAddress, contractAddress);
         Blockchain.register(contract);
         await contract.init();
 
@@ -536,7 +536,7 @@ await opnet('Upgrade lifecycle edge cases', async (vm: OPNetUnit) => {
 });
 
 await opnet('Phase 2 gas accounting', async (vm: OPNetUnit) => {
-    let contract: UpgradeableContractRuntime;
+    let contract: UpdatableContractRuntime;
     let v2Source: V2SourceContractRuntime;
 
     const deployerAddress: Address = Blockchain.generateRandomAddress();
@@ -548,7 +548,7 @@ await opnet('Phase 2 gas accounting', async (vm: OPNetUnit) => {
         Blockchain.clearContracts();
         await Blockchain.init();
 
-        contract = new UpgradeableContractRuntime(deployerAddress, contractAddress);
+        contract = new UpdatableContractRuntime(deployerAddress, contractAddress);
         Blockchain.register(contract);
         await contract.init();
 
@@ -622,7 +622,7 @@ await opnet('Phase 2 gas accounting', async (vm: OPNetUnit) => {
 });
 
 await opnet('Phase 2 upgrade guard enforcement', async (vm: OPNetUnit) => {
-    let contract: UpgradeableContractRuntime;
+    let contract: UpdatableContractRuntime;
     let v2Source: V2SourceContractRuntime;
 
     const deployerAddress: Address = Blockchain.generateRandomAddress();
@@ -634,7 +634,7 @@ await opnet('Phase 2 upgrade guard enforcement', async (vm: OPNetUnit) => {
         Blockchain.clearContracts();
         await Blockchain.init();
 
-        contract = new UpgradeableContractRuntime(deployerAddress, contractAddress);
+        contract = new UpdatableContractRuntime(deployerAddress, contractAddress);
         Blockchain.register(contract);
         await contract.init();
 
@@ -731,7 +731,7 @@ class MaliciousV2SourceRuntime extends ContractRuntime {
 // emits a "PhantomEvent", then reverts. These side effects MUST NOT leak.
 
 await opnet('Failed Phase 2 state isolation', async (vm: OPNetUnit) => {
-    let contract: UpgradeableContractRuntime;
+    let contract: UpdatableContractRuntime;
     let maliciousV2Source: MaliciousV2SourceRuntime;
 
     const deployerAddress: Address = Blockchain.generateRandomAddress();
@@ -743,7 +743,7 @@ await opnet('Failed Phase 2 state isolation', async (vm: OPNetUnit) => {
         Blockchain.clearContracts();
         await Blockchain.init();
 
-        contract = new UpgradeableContractRuntime(deployerAddress, contractAddress);
+        contract = new UpdatableContractRuntime(deployerAddress, contractAddress);
         Blockchain.register(contract);
         await contract.init();
 

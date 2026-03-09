@@ -1,5 +1,4 @@
 import {
-    Address,
     Blockchain,
     BytesWriter,
     Calldata,
@@ -7,7 +6,7 @@ import {
 } from '@btc-vision/btc-runtime/runtime';
 
 @final
-export class UpgradeableContract extends OP_NET {
+export class UpdatableContractV2 extends OP_NET {
     public constructor() {
         super();
     }
@@ -16,15 +15,8 @@ export class UpgradeableContract extends OP_NET {
     @returns('uint32')
     public getValue(_: Calldata): BytesWriter {
         const result = new BytesWriter(4);
-        result.writeU32(1);
+        result.writeU32(2);
         return result;
-    }
-
-    @method('address')
-    public upgrade(calldata: Calldata): BytesWriter {
-        const sourceAddress = calldata.readAddress();
-        Blockchain.updateContractFromExisting(sourceAddress);
-        return new BytesWriter(0);
     }
 
     @method('bytes32', 'bytes32')

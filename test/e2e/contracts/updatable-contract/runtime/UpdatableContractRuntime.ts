@@ -1,7 +1,7 @@
 import { Address, BinaryReader, BinaryWriter } from '@btc-vision/transaction';
 import { BytecodeManager, CallResponse, ContractRuntime } from '../../../../../src';
 
-export class UpgradeableContractRuntime extends ContractRuntime {
+export class UpdatableContractRuntime extends ContractRuntime {
     private readonly getValueSelector: number = this.getSelector('getValue()');
     private readonly upgradeSelector: number = this.getSelector('upgrade(address)');
     private readonly storeSelector: number = this.getSelector('store(bytes32,bytes32)');
