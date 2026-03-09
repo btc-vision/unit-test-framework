@@ -27,7 +27,7 @@ Check out the full documentation in [`/docs`](./docs)!
 - [Assertions](./docs/api-reference/assertions.md) - Static & fluent assertion API
 - [Blockchain API](./docs/api-reference/blockchain.md) - Blockchain simulator
 - [Contract Runtime](./docs/api-reference/contract-runtime.md) - Custom contract wrappers
-- [Advanced Topics](./docs/advanced/cross-contract-calls.md) - Upgrades, signatures, gas profiling, consensus rules
+- [Advanced Topics](./docs/advanced/cross-contract-calls.md) - Updates, signatures, gas profiling, consensus rules
 - [Examples](./docs/examples/nativeswap-testing.md) - Real-world test examples
 - [API Reference](./docs/api-reference/types-interfaces.md) - Full type reference
 

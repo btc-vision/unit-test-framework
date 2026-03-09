@@ -11,7 +11,7 @@ import {
 import { UpdatableContractRuntime } from '../contracts/updatable-contract/runtime/UpdatableContractRuntime';
 
 const V2_WASM_PATH =
-    './test/e2e/contracts/upgradeable-contract-v2/contract/build/UpgradeableContractV2.wasm';
+    './test/e2e/contracts/updatable-contract-v2/contract/build/UpdatableContractV2.wasm';
 
 class V2SourceContractRuntime extends ContractRuntime {
     public constructor(deployer: Address, address: Address) {
@@ -63,33 +63,33 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
         Blockchain.dispose();
     });
 
-    // --- Basic upgrade flow ---
+    // --- Basic update flow ---
 
-    await vm.it('should return getValue=1 before upgrade', async () => {
+    await vm.it('should return getValue=1 before update', async () => {
         const value = await contract.getValue();
         Assert.expect(value).toEqual(1);
     });
 
-    await vm.it('should not apply upgrade on the same block', async () => {
-        // Before upgrade, getValue returns 1
+    await vm.it('should not apply update on the same block', async () => {
+        // Before update, getValue returns 1
         const valueBefore = await contract.getValue();
         Assert.expect(valueBefore).toEqual(1);
 
-        // Perform upgrade
-        await contract.upgrade(v2SourceAddress);
+        // Perform update
+        await contract.update(v2SourceAddress);
 
         // Same block: getValue should still return 1 (old bytecode)
         const valueSameBlock = await contract.getValue();
         Assert.expect(valueSameBlock).toEqual(1);
     });
 
-    await vm.it('should apply upgrade on the next block', async () => {
-        // Before upgrade
+    await vm.it('should apply update on the next block', async () => {
+        // Before update
         const valueBefore = await contract.getValue();
         Assert.expect(valueBefore).toEqual(1);
 
-        // Perform upgrade
-        await contract.upgrade(v2SourceAddress);
+        // Perform update
+        await contract.update(v2SourceAddress);
 
         // Advance to next block
         Blockchain.mineBlock();
@@ -101,30 +101,30 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
 
     // --- Storage persistence ---
 
-    await vm.it('should preserve storage across upgrade', async () => {
+    await vm.it('should preserve storage across update', async () => {
         const storageKey = new Uint8Array(32);
         storageKey[31] = 42;
 
         const storageValue = new Uint8Array(32);
         storageValue[31] = 99;
 
-        // Store a value pre-upgrade
+        // Store a value pre-update
         await contract.storeValue(storageKey, storageValue);
 
-        // Verify it can be loaded before upgrade
+        // Verify it can be loaded before update
         const loadedBefore = await contract.loadValue(storageKey);
         Assert.expect(areBytesEqual(loadedBefore, storageValue)).toEqual(true);
 
-        // Upgrade and advance block
-        await contract.upgrade(v2SourceAddress);
+        // Update and advance block
+        await contract.update(v2SourceAddress);
         Blockchain.mineBlock();
 
-        // Verify storage persists after upgrade with new bytecode
+        // Verify storage persists after update with new bytecode
         const loadedAfter = await contract.loadValue(storageKey);
         Assert.expect(areBytesEqual(loadedAfter, storageValue)).toEqual(true);
     });
 
-    await vm.it('should preserve multiple storage entries across upgrade', async () => {
+    await vm.it('should preserve multiple storage entries across update', async () => {
         const key1 = new Uint8Array(32);
         key1[31] = 1;
         const value1 = new Uint8Array(32);
@@ -145,8 +145,8 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
         await contract.storeValue(key2, value2);
         await contract.storeValue(key3, value3);
 
-        // Upgrade and advance block
-        await contract.upgrade(v2SourceAddress);
+        // Update and advance block
+        await contract.update(v2SourceAddress);
         Blockchain.mineBlock();
 
         // All values should be preserved
@@ -159,9 +159,9 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
         Assert.expect(areBytesEqual(loaded3, value3)).toEqual(true);
     });
 
-    await vm.it('should allow writing storage after upgrade', async () => {
-        // Upgrade and advance block
-        await contract.upgrade(v2SourceAddress);
+    await vm.it('should allow writing storage after update', async () => {
+        // Update and advance block
+        await contract.update(v2SourceAddress);
         Blockchain.mineBlock();
 
         // Write new storage with v2 bytecode
@@ -176,7 +176,7 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
         Assert.expect(areBytesEqual(loaded, value)).toEqual(true);
     });
 
-    await vm.it('should allow reading storage on same block as upgrade (still v1)', async () => {
+    await vm.it('should allow reading storage on same block as update (still v1)', async () => {
         const storageKey = new Uint8Array(32);
         storageKey[31] = 55;
         const storageValue = new Uint8Array(32);
@@ -185,8 +185,8 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
         // Store value
         await contract.storeValue(storageKey, storageValue);
 
-        // Upgrade (same block)
-        await contract.upgrade(v2SourceAddress);
+        // Update (same block)
+        await contract.update(v2SourceAddress);
 
         // Read on same block — still using v1 bytecode, but storage should be accessible
         const loaded = await contract.loadValue(storageKey);
@@ -199,16 +199,16 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
         const nonExistentAddress = Blockchain.generateRandomAddress();
 
         await Assert.expect(async () => {
-            await contract.upgrade(nonExistentAddress);
+            await contract.update(nonExistentAddress);
         }).toThrow();
     });
 
-    await vm.it('should remain functional after failed upgrade attempt', async () => {
+    await vm.it('should remain functional after failed update attempt', async () => {
         const nonExistentAddress = Blockchain.generateRandomAddress();
 
-        // Attempt upgrade with invalid address (should fail)
+        // Attempt update with invalid address (should fail)
         try {
-            await contract.upgrade(nonExistentAddress);
+            await contract.update(nonExistentAddress);
         } catch {
             // Expected to fail
         }
@@ -218,7 +218,7 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
         Assert.expect(value).toEqual(1);
     });
 
-    await vm.it('should preserve storage after failed upgrade attempt', async () => {
+    await vm.it('should preserve storage after failed update attempt', async () => {
         const storageKey = new Uint8Array(32);
         storageKey[31] = 11;
         const storageValue = new Uint8Array(32);
@@ -228,7 +228,7 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
 
         const nonExistentAddress = Blockchain.generateRandomAddress();
         try {
-            await contract.upgrade(nonExistentAddress);
+            await contract.update(nonExistentAddress);
         } catch {
             // Expected to fail
         }
@@ -240,10 +240,10 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
 
     // --- Address preservation ---
 
-    await vm.it('should preserve contract address after upgrade', async () => {
+    await vm.it('should preserve contract address after update', async () => {
         const addressBefore = contract.address;
 
-        await contract.upgrade(v2SourceAddress);
+        await contract.update(v2SourceAddress);
         Blockchain.mineBlock();
 
         Assert.expect(contract.address.equals(addressBefore)).toEqual(true);
@@ -251,8 +251,8 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
 
     // --- Block boundary behavior ---
 
-    await vm.it('should not apply upgrade until block advances', async () => {
-        await contract.upgrade(v2SourceAddress);
+    await vm.it('should not apply update until block advances', async () => {
+        await contract.update(v2SourceAddress);
 
         // Same block: multiple calls should all return v1 value
         const value1 = await contract.getValue();
@@ -268,8 +268,8 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
         Assert.expect(value3).toEqual(2);
     });
 
-    await vm.it('should apply upgrade exactly at next block boundary', async () => {
-        await contract.upgrade(v2SourceAddress);
+    await vm.it('should apply update exactly at next block boundary', async () => {
+        await contract.update(v2SourceAddress);
 
         // Same block
         Assert.expect(await contract.getValue()).toEqual(1);
@@ -277,7 +277,7 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
         // Mine one block
         Blockchain.mineBlock();
 
-        // Exactly one block later: upgrade should be applied
+        // Exactly one block later: update should be applied
         Assert.expect(await contract.getValue()).toEqual(2);
 
         // Mine another block: should still be v2
@@ -288,10 +288,10 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
 
     // --- Gas tracking ---
 
-    await vm.it('should consume gas during upgrade', async () => {
-        const response = await contract.upgrade(v2SourceAddress);
+    await vm.it('should consume gas during update', async () => {
+        const response = await contract.update(v2SourceAddress);
 
-        // Upgrade execution must consume gas
+        // Update execution must consume gas
         Assert.expect(response.usedGas > 0n).toEqual(true);
     });
 
@@ -307,21 +307,21 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
         });
         const simpleGas = simpleResponse.usedGas;
 
-        // Measure gas for upgrade (includes onUpdate + bytecode overhead)
-        const upgradeResponse = await contract.upgrade(v2SourceAddress);
-        const upgradeGas = upgradeResponse.usedGas;
+        // Measure gas for update (includes onUpdate + bytecode overhead)
+        const updateResponse = await contract.update(v2SourceAddress);
+        const updateGas = updateResponse.usedGas;
 
-        // Upgrade should cost more than a trivial getter
-        Assert.expect(upgradeGas > simpleGas).toEqual(true);
+        // Update should cost more than a trivial getter
+        Assert.expect(updateGas > simpleGas).toEqual(true);
     });
 
-    await vm.it('should not charge upgrade gas on failed upgrade', async () => {
+    await vm.it('should not charge update gas on failed update', async () => {
         const nonExistentAddress = Blockchain.generateRandomAddress();
 
-        // Failed upgrade should still return a response (with error)
+        // Failed update should still return a response (with error)
         // but the overall tx reverts so gas is handled by the VM
         await Assert.expect(async () => {
-            await contract.upgrade(nonExistentAddress);
+            await contract.update(nonExistentAddress);
         }).toThrow();
 
         // Contract should still be functional (no gas state corruption)
@@ -329,15 +329,15 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
         Assert.expect(value).toEqual(1);
     });
 
-    // --- One upgrade per block enforcement ---
+    // --- One update per block enforcement ---
 
-    await vm.it('should reject second upgrade in the same block', async () => {
-        // First upgrade should succeed
-        await contract.upgrade(v2SourceAddress);
+    await vm.it('should reject second update in the same block', async () => {
+        // First update should succeed
+        await contract.update(v2SourceAddress);
 
-        // Second upgrade in the same block should revert
+        // Second update in the same block should revert
         await Assert.expect(async () => {
-            await contract.upgrade(v2SourceAddress);
+            await contract.update(v2SourceAddress);
         }).toThrow();
 
         // Contract should still work
@@ -346,14 +346,14 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
     });
 
     await vm.it('should clear pending state after block advances', async () => {
-        // Upgrade and advance
-        await contract.upgrade(v2SourceAddress);
+        // Update and advance
+        await contract.update(v2SourceAddress);
         Blockchain.mineBlock();
 
-        // Upgrade applied — getValue returns 2
+        // Update applied — getValue returns 2
         Assert.expect(await contract.getValue()).toEqual(2);
 
-        // Mine another block — no pending upgrade, should still work
+        // Mine another block — no pending update, should still work
         Blockchain.mineBlock();
         Assert.expect(await contract.getValue()).toEqual(2);
 
@@ -368,21 +368,21 @@ await opnet('UpdateFromAddress tests', async (vm: OPNetUnit) => {
         Assert.expect(areBytesEqual(loaded, value)).toEqual(true);
     });
 
-    // --- Upgrade + subsequent operations ---
+    // --- Update + subsequent operations ---
 
-    await vm.it('should allow operations between upgrade and block advance', async () => {
+    await vm.it('should allow operations between update and block advance', async () => {
         const storageKey = new Uint8Array(32);
         storageKey[31] = 100;
         const storageValue = new Uint8Array(32);
         storageValue[31] = 200;
 
-        // Upgrade
-        await contract.upgrade(v2SourceAddress);
+        // Update
+        await contract.update(v2SourceAddress);
 
-        // Store data between upgrade and block advance (still v1)
+        // Store data between update and block advance (still v1)
         await contract.storeValue(storageKey, storageValue);
 
-        // Mine block to apply upgrade
+        // Mine block to apply update
         Blockchain.mineBlock();
 
         // Data written before block advance should persist with v2
@@ -432,7 +432,7 @@ await opnet('BytecodeManager targeted removal', async (vm: OPNetUnit) => {
     });
 });
 
-await opnet('Upgrade lifecycle edge cases', async (vm: OPNetUnit) => {
+await opnet('Update lifecycle edge cases', async (vm: OPNetUnit) => {
     let contract: UpdatableContractRuntime;
     let v2Source: V2SourceContractRuntime;
 
@@ -463,8 +463,8 @@ await opnet('Upgrade lifecycle edge cases', async (vm: OPNetUnit) => {
         Blockchain.dispose();
     });
 
-    await vm.it('should allow multiple calls after successful upgrade + mine', async () => {
-        await contract.upgrade(v2SourceAddress);
+    await vm.it('should allow multiple calls after successful update + mine', async () => {
+        await contract.update(v2SourceAddress);
         Blockchain.mineBlock();
 
         // Multiple sequential calls on new bytecode
@@ -473,8 +473,8 @@ await opnet('Upgrade lifecycle edge cases', async (vm: OPNetUnit) => {
         Assert.expect(await contract.getValue()).toEqual(2);
     });
 
-    await vm.it('should allow storage operations on new bytecode after upgrade', async () => {
-        await contract.upgrade(v2SourceAddress);
+    await vm.it('should allow storage operations on new bytecode after update', async () => {
+        await contract.update(v2SourceAddress);
         Blockchain.mineBlock();
 
         // Write with new bytecode
@@ -488,8 +488,8 @@ await opnet('Upgrade lifecycle edge cases', async (vm: OPNetUnit) => {
         Assert.expect(areBytesEqual(loaded, value)).toEqual(true);
     });
 
-    await vm.it('should handle upgrade followed by multiple block advances', async () => {
-        await contract.upgrade(v2SourceAddress);
+    await vm.it('should handle update followed by multiple block advances', async () => {
+        await contract.update(v2SourceAddress);
 
         // Mine 3 blocks
         Blockchain.mineBlock();
@@ -500,19 +500,19 @@ await opnet('Upgrade lifecycle edge cases', async (vm: OPNetUnit) => {
         Assert.expect(await contract.getValue()).toEqual(2);
     });
 
-    await vm.it('should not corrupt state after failed upgrade + successful retry', async () => {
+    await vm.it('should not corrupt state after failed update + successful retry', async () => {
         const fakeAddr = Blockchain.generateRandomAddress();
 
-        // Store value before any upgrades
+        // Store value before any updates
         const key = new Uint8Array(32);
         key[31] = 0x01;
         const value = new Uint8Array(32);
         value[31] = 0xff;
         await contract.storeValue(key, value);
 
-        // Failed upgrade
+        // Failed update
         try {
-            await contract.upgrade(fakeAddr);
+            await contract.update(fakeAddr);
         } catch {
             // expected
         }
@@ -524,8 +524,8 @@ await opnet('Upgrade lifecycle edge cases', async (vm: OPNetUnit) => {
         const loaded = await contract.loadValue(key);
         Assert.expect(areBytesEqual(loaded, value)).toEqual(true);
 
-        // Now do a real upgrade
-        await contract.upgrade(v2SourceAddress);
+        // Now do a real update
+        await contract.update(v2SourceAddress);
         Blockchain.mineBlock();
 
         // V2 active and storage preserved
@@ -567,7 +567,7 @@ await opnet('Phase 2 gas accounting', async (vm: OPNetUnit) => {
     });
 
     await vm.it('should charge Phase 2 onUpdate gas to the first caller after mine', async () => {
-        // Baseline: gas for getValue without pending upgrade
+        // Baseline: gas for getValue without pending update
         const abiCoder = new ABICoder();
         const getValueCalldata = new BinaryWriter();
         getValueCalldata.writeSelector(
@@ -579,29 +579,29 @@ await opnet('Phase 2 gas accounting', async (vm: OPNetUnit) => {
         });
         const baselineGas = baselineResponse.usedGas;
 
-        // Queue upgrade, mine block
-        await contract.upgrade(v2SourceAddress);
+        // Queue update, mine block
+        await contract.update(v2SourceAddress);
         Blockchain.mineBlock();
 
-        // First call after mine triggers Phase 2 (applyPendingBytecodeUpgrade)
+        // First call after mine triggers Phase 2 (applyPendingBytecodeUpdate)
         const getValueCalldata2 = new BinaryWriter();
         getValueCalldata2.writeSelector(
             Number(`0x${abiCoder.encodeSelector('getValue()')}`),
         );
 
-        const postUpgradeResponse = await contract.execute({
+        const postUpdateResponse = await contract.execute({
             calldata: getValueCalldata2.getBuffer(),
         });
-        const postUpgradeGas = postUpgradeResponse.usedGas;
+        const postUpdateGas = postUpdateResponse.usedGas;
 
         // Phase 2 onUpdate gas MUST be included — first call costs more than baseline
-        Assert.expect(postUpgradeGas > baselineGas).toEqual(true);
+        Assert.expect(postUpdateGas > baselineGas).toEqual(true);
     });
 
     await vm.it('should NOT charge Phase 2 gas on second call (already applied)', async () => {
         const abiCoder = new ABICoder();
 
-        await contract.upgrade(v2SourceAddress);
+        await contract.update(v2SourceAddress);
         Blockchain.mineBlock();
 
         // First call: pays Phase 2 gas
@@ -610,7 +610,7 @@ await opnet('Phase 2 gas accounting', async (vm: OPNetUnit) => {
         const firstCallResponse = await contract.execute({ calldata: calldata1.getBuffer() });
         const firstCallGas = firstCallResponse.usedGas;
 
-        // Second call: no pending upgrade, normal gas
+        // Second call: no pending update, normal gas
         const calldata2 = new BinaryWriter();
         calldata2.writeSelector(Number(`0x${abiCoder.encodeSelector('getValue()')}`));
         const secondCallResponse = await contract.execute({ calldata: calldata2.getBuffer() });
@@ -621,7 +621,7 @@ await opnet('Phase 2 gas accounting', async (vm: OPNetUnit) => {
     });
 });
 
-await opnet('Phase 2 upgrade guard enforcement', async (vm: OPNetUnit) => {
+await opnet('Phase 2 update guard enforcement', async (vm: OPNetUnit) => {
     let contract: UpdatableContractRuntime;
     let v2Source: V2SourceContractRuntime;
 
@@ -652,8 +652,8 @@ await opnet('Phase 2 upgrade guard enforcement', async (vm: OPNetUnit) => {
         Blockchain.dispose();
     });
 
-    await vm.it('should clear upgrade guard after Phase 2 completes', async () => {
-        await contract.upgrade(v2SourceAddress);
+    await vm.it('should clear update guard after Phase 2 completes', async () => {
+        await contract.update(v2SourceAddress);
         Blockchain.mineBlock();
 
         // First call triggers Phase 2. Guard is set during onUpdate, cleared after.
@@ -673,18 +673,18 @@ await opnet('Phase 2 upgrade guard enforcement', async (vm: OPNetUnit) => {
         Assert.expect(areBytesEqual(loaded, value)).toEqual(true);
     });
 
-    await vm.it('should allow upgrade on a later block after Phase 2 completed', async () => {
-        // First upgrade cycle
-        await contract.upgrade(v2SourceAddress);
+    await vm.it('should allow update on a later block after Phase 2 completed', async () => {
+        // First update cycle
+        await contract.update(v2SourceAddress);
         Blockchain.mineBlock();
         Assert.expect(await contract.getValue()).toEqual(2);
 
-        // Re-register V1 source to allow upgrading back (simulate V3)
+        // Re-register V1 source to allow updating back (simulate V3)
         // Use V2 source again — just proving the mechanism allows it
         Blockchain.mineBlock();
 
         // The guard from Phase 2 must be fully cleared
-        // A new upgrade request should succeed on a new block
+        // A new update request should succeed on a new block
         const key = new Uint8Array(32);
         key[31] = 0x01;
         const value = new Uint8Array(32);
@@ -762,8 +762,8 @@ await opnet('Failed Phase 2 state isolation', async (vm: OPNetUnit) => {
     });
 
     await vm.it('should NOT leak storage writes from failed Phase 2 onUpdate', async () => {
-        // Queue upgrade to malicious V2 (Phase 1 succeeds on current bytecode)
-        await contract.upgrade(maliciousV2Address);
+        // Queue update to malicious V2 (Phase 1 succeeds on current bytecode)
+        await contract.update(maliciousV2Address);
 
         // Advance block to trigger Phase 2
         Blockchain.mineBlock();
@@ -794,7 +794,7 @@ await opnet('Failed Phase 2 state isolation', async (vm: OPNetUnit) => {
     });
 
     await vm.it('should NOT leak events from failed Phase 2 onUpdate', async () => {
-        await contract.upgrade(maliciousV2Address);
+        await contract.update(maliciousV2Address);
         Blockchain.mineBlock();
 
         const abiCoder = new ABICoder();
@@ -810,10 +810,10 @@ await opnet('Failed Phase 2 state isolation', async (vm: OPNetUnit) => {
     });
 
     await vm.it('should charge gas for failed Phase 2 onUpdate', async () => {
-        await contract.upgrade(maliciousV2Address);
+        await contract.update(maliciousV2Address);
         Blockchain.mineBlock();
 
-        // Baseline: normal getValue gas without any pending upgrade
+        // Baseline: normal getValue gas without any pending update
         const abiCoder = new ABICoder();
 
         // First call: triggers failed Phase 2 + getValue
@@ -822,7 +822,7 @@ await opnet('Failed Phase 2 state isolation', async (vm: OPNetUnit) => {
         const firstResponse = await contract.execute({ calldata: calldata1.getBuffer() });
         const gasWithFailedPhase2 = firstResponse.usedGas;
 
-        // Second call: no pending upgrade, clean getValue
+        // Second call: no pending update, clean getValue
         const calldata2 = new BinaryWriter();
         calldata2.writeSelector(Number(`0x${abiCoder.encodeSelector('getValue()')}`));
         const secondResponse = await contract.execute({ calldata: calldata2.getBuffer() });
@@ -833,7 +833,7 @@ await opnet('Failed Phase 2 state isolation', async (vm: OPNetUnit) => {
     });
 
     await vm.it('should revert bytecode after failed Phase 2 (still v1)', async () => {
-        await contract.upgrade(maliciousV2Address);
+        await contract.update(maliciousV2Address);
         Blockchain.mineBlock();
 
         // getValue should return 1 (v1) — Phase 2 failed, bytecode reverted

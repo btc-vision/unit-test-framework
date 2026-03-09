@@ -168,4 +168,4 @@ await vm.it('should compare two scenarios', async () => {
 
 ---
 
-[<- Previous: Utilities](../api-reference/utilities.md) | [Next: Upgradeable Contracts ->](./upgradeable-contracts.md)
+[<- Previous: Utilities](../api-reference/utilities.md) | [Next: Updatable Contracts ->](./updatable-contracts.md)

@@ -482,7 +482,7 @@ await opnet('TestContract', async (vm: OPNetUnit) => {
 
 - [Contract Runtime API Reference](../api-reference/contract-runtime.md) - Full API details
 - [Cross-Contract Calls](../advanced/cross-contract-calls.md) - Multi-contract testing
-- [Upgradeable Contracts](../advanced/upgradeable-contracts.md) - Testing upgrades
+- [Updatable Contracts](../advanced/updatable-contracts.md) - Testing updates
 
 ---
 

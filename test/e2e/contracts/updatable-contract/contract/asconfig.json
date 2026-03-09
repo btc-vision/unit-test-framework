@@ -1,8 +1,8 @@
 {
   "targets": {
     "debug": {
-      "outFile": "build/UpgradeableContract.wasm",
-      "textFile": "build/UpgradeableContract.wat"
+      "outFile": "build/UpdatableContract.wasm",
+      "textFile": "build/UpdatableContract.wat"
     }
   },
   "options": {

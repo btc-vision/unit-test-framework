@@ -21,7 +21,7 @@ export class UpdatableContract extends OP_NET {
     }
 
     @method('address')
-    public upgrade(calldata: Calldata): BytesWriter {
+    public update(calldata: Calldata): BytesWriter {
         const sourceAddress = calldata.readAddress();
         Blockchain.updateContractFromExisting(sourceAddress);
         return new BytesWriter(0);

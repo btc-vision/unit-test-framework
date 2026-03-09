@@ -3,7 +3,7 @@ import { BytecodeManager, CallResponse, ContractRuntime } from '../../../../../s
 
 export class UpdatableContractRuntime extends ContractRuntime {
     private readonly getValueSelector: number = this.getSelector('getValue()');
-    private readonly upgradeSelector: number = this.getSelector('upgrade(address)');
+    private readonly updateSelector: number = this.getSelector('update(address)');
     private readonly storeSelector: number = this.getSelector('store(bytes32,bytes32)');
     private readonly loadSelector: number = this.getSelector('load(bytes32)');
 
@@ -26,9 +26,9 @@ export class UpdatableContractRuntime extends ContractRuntime {
         return reader.readU32();
     }
 
-    public async upgrade(sourceAddress: Address): Promise<CallResponse> {
+    public async update(sourceAddress: Address): Promise<CallResponse> {
         const calldata = new BinaryWriter();
-        calldata.writeSelector(this.upgradeSelector);
+        calldata.writeSelector(this.updateSelector);
         calldata.writeAddress(sourceAddress);
 
         const response = await this.execute({ calldata: calldata.getBuffer() });
@@ -57,12 +57,12 @@ export class UpdatableContractRuntime extends ContractRuntime {
     }
 
     protected handleError(error: Error): Error {
-        return new Error(`(in upgradeable contract: ${this.address}) OP_NET: ${error.message}`);
+        return new Error(`(in updatable contract: ${this.address}) OP_NET: ${error.message}`);
     }
 
     protected defineRequiredBytecodes(): void {
         BytecodeManager.loadBytecode(
-            './test/e2e/contracts/upgradeable-contract/contract/build/UpgradeableContract.wasm',
+            './test/e2e/contracts/updatable-contract/contract/build/UpdatableContract.wasm',
             this.address,
         );
     }

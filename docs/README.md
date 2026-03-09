@@ -25,7 +25,7 @@ Welcome to the documentation for `@btc-vision/unit-test-framework`. This framewo
 ### Advanced Topics
 
 - [Cross-Contract Calls](./advanced/cross-contract-calls.md) - Multi-contract testing
-- [Upgradeable Contracts](./advanced/upgradeable-contracts.md) - Testing contract upgrades
+- [Updatable Contracts](./advanced/updatable-contracts.md) - Testing contract updates
 - [Transaction Simulation](./advanced/transaction-simulation.md) - Bitcoin transaction inputs/outputs
 - [Signature Verification](./advanced/signature-verification.md) - ML-DSA, Schnorr, ECDSA
 - [State Management](./advanced/state-management.md) - State overrides and block replay
