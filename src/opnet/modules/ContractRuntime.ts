@@ -84,8 +84,8 @@ export class ContractRuntime extends Logger {
     private readonly proofFeatureEnabled = false;
     private _pendingBytecode: Buffer | undefined;
     private _pendingBytecodeBlock: bigint | undefined;
-    private _pendingUpgradeCalldata: Buffer | undefined;
-    private _hasUpgradedInCurrentExecution: boolean = false;
+    private _pendingUpdateCalldata: Buffer | undefined;
+    private _hasUpdatedInCurrentExecution: boolean = false;
 
     protected constructor(details: ContractDetails) {
         super();
@@ -370,8 +370,8 @@ export class ContractRuntime extends Logger {
                     StateHandler.pushAllTempStatesToGlobal();
                 }
             } else {
-                // Transaction reverted: cancel any pending bytecode upgrade
-                this.cancelPendingBytecodeUpgrade();
+                // Transaction reverted: cancel any pending bytecode update
+                this.cancelPendingBytecodeUpdate();
             }
 
             // Reset internal states
@@ -401,12 +401,12 @@ export class ContractRuntime extends Logger {
         this.touchedAddresses = new AddressSet([this.address]);
         this.touchedBlocks = new Set([Blockchain.blockNumber]);
 
-        this._hasUpgradedInCurrentExecution = false;
+        this._hasUpdatedInCurrentExecution = false;
     }
 
     protected async executeCall(executionParameters: ExecutionParameters): Promise<CallResponse> {
-        // Apply pending bytecode upgrade if block has advanced
-        const phase2Gas = await this.applyPendingBytecodeUpgrade();
+        // Apply pending bytecode update if block has advanced
+        const phase2Gas = await this.applyPendingBytecodeUpdate();
 
         // Deploy if not deployed.
         const deployment = await this.deployContract(false);
@@ -558,7 +558,7 @@ export class ContractRuntime extends Logger {
         return result;
     }
 
-    private async applyPendingBytecodeUpgrade(): Promise<bigint> {
+    private async applyPendingBytecodeUpdate(): Promise<bigint> {
         if (
             !this._pendingBytecode ||
             this._pendingBytecodeBlock === undefined ||
@@ -569,7 +569,7 @@ export class ContractRuntime extends Logger {
 
         const previousBytecode = this._bytecode;
         const previousContract = this._contract;
-        const calldata = this._pendingUpgradeCalldata || Buffer.alloc(0);
+        const calldata = this._pendingUpdateCalldata || Buffer.alloc(0);
 
         // Swap to the new bytecode first
         this._bytecode = this._pendingBytecode;
@@ -580,8 +580,8 @@ export class ContractRuntime extends Logger {
         let tempContract: RustContract | undefined;
         let phase2GasUsed: bigint = 0n;
         try {
-            // Block cross-contract calls and nested upgrades during Phase 2 onUpdate
-            this._hasUpgradedInCurrentExecution = true;
+            // Block cross-contract calls and nested updates during Phase 2 onUpdate
+            this._hasUpdatedInCurrentExecution = true;
 
             tempContract = new RustContract(this.generateParams(true));
             this._contract = tempContract;
@@ -599,7 +599,7 @@ export class ContractRuntime extends Logger {
             // onUpdate failed — revert bytecode swap
             if (!previousBytecode) {
                 throw new Error(
-                    'OP_NET: FATAL — upgrade revert with no previous bytecode (impossible state)',
+                    'OP_NET: FATAL — update revert with no previous bytecode (impossible state)',
                     { cause: e },
                 );
             }
@@ -626,12 +626,12 @@ export class ContractRuntime extends Logger {
             }
 
             if (this.logUnexpectedErrors) {
-                this.warn(`onUpdate failed, upgrade reverted: ${(e as Error).message}`);
+                this.warn(`onUpdate failed, update reverted: ${(e as Error).message}`);
             }
         } finally {
             // Always restore original contract reference
             this._contract = previousContract;
-            this._hasUpgradedInCurrentExecution = false;
+            this._hasUpdatedInCurrentExecution = false;
 
             if (tempContract) {
                 try {
@@ -643,16 +643,16 @@ export class ContractRuntime extends Logger {
 
             this._pendingBytecode = undefined;
             this._pendingBytecodeBlock = undefined;
-            this._pendingUpgradeCalldata = undefined;
+            this._pendingUpdateCalldata = undefined;
         }
 
         return phase2GasUsed;
     }
 
-    private cancelPendingBytecodeUpgrade(): void {
+    private cancelPendingBytecodeUpdate(): void {
         this._pendingBytecode = undefined;
         this._pendingBytecodeBlock = undefined;
-        this._pendingUpgradeCalldata = undefined;
+        this._pendingUpdateCalldata = undefined;
     }
 
     private getGasUsed(): bigint {
@@ -668,8 +668,8 @@ export class ContractRuntime extends Logger {
     }
 
     private async updateFromAddress(data: Buffer): Promise<Buffer | Uint8Array> {
-        if (this._hasUpgradedInCurrentExecution) {
-            throw new Error('OP_NET: Cannot upgrade while another upgrade is in progress');
+        if (this._hasUpdatedInCurrentExecution) {
+            throw new Error('OP_NET: Cannot update while another update is in progress');
         }
 
         try {
@@ -680,16 +680,16 @@ export class ContractRuntime extends Logger {
 
             if (calldata.byteLength > CONSENSUS.COMPRESSION.MAX_DECOMPRESSED_SIZE) {
                 throw new Error(
-                    `OP_NET: Upgrade calldata exceeds maximum decompressed size (${calldata.byteLength} > ${CONSENSUS.COMPRESSION.MAX_DECOMPRESSED_SIZE})`,
+                    `OP_NET: Update calldata exceeds maximum decompressed size (${calldata.byteLength} > ${CONSENSUS.COMPRESSION.MAX_DECOMPRESSED_SIZE})`,
                 );
             }
 
-            // Enforce one upgrade per block per contract
+            // Enforce one update per block per contract
             if (
                 this._pendingBytecodeBlock !== undefined &&
                 this._pendingBytecodeBlock === Blockchain.blockNumber
             ) {
-                throw new Error('OP_NET: Only one upgrade per block per contract is allowed');
+                throw new Error('OP_NET: Only one update per block per contract is allowed');
             }
 
             const gasBefore = this.gasUsed;
@@ -701,11 +701,11 @@ export class ContractRuntime extends Logger {
             const originalContract = this._contract;
             let tempContract: RustContract | undefined;
 
-            // Set upgrade flag BEFORE onUpdate to prevent:
+            // Set update flag BEFORE onUpdate to prevent:
             // 1. Nested updateFromAddress calls from within onUpdate
             // 2. Cross-contract calls (Blockchain.call) from within onUpdate
-            this._hasUpgradedInCurrentExecution = true;
-            let upgradeCommitted = false;
+            this._hasUpdatedInCurrentExecution = true;
+            let updateCommitted = false;
 
             try {
                 tempContract = new RustContract(this.generateParams(true));
@@ -736,8 +736,8 @@ export class ContractRuntime extends Logger {
                 // Schedule bytecode replacement for the next block
                 this._pendingBytecode = newBytecode;
                 this._pendingBytecodeBlock = Blockchain.blockNumber;
-                this._pendingUpgradeCalldata = calldata;
-                upgradeCommitted = true;
+                this._pendingUpdateCalldata = calldata;
+                updateCommitted = true;
 
                 const used = response.gasUsed - gasBefore;
                 this.gasUsed = response.gasUsed;
@@ -751,8 +751,8 @@ export class ContractRuntime extends Logger {
             } finally {
                 this._contract = originalContract;
 
-                if (!upgradeCommitted) {
-                    this._hasUpgradedInCurrentExecution = false;
+                if (!updateCommitted) {
+                    this._hasUpdatedInCurrentExecution = false;
                 }
 
                 if (tempContract) {
@@ -778,9 +778,9 @@ export class ContractRuntime extends Logger {
     }
 
     private async deployContractAtAddress(data: Buffer): Promise<Buffer | Uint8Array> {
-        if (this._hasUpgradedInCurrentExecution) {
+        if (this._hasUpdatedInCurrentExecution) {
             throw new Error(
-                'OP_NET: Cannot deploy contracts after upgrading bytecode in the same execution',
+                'OP_NET: Cannot deploy contracts after updating bytecode in the same execution',
             );
         }
 
@@ -1032,9 +1032,9 @@ export class ContractRuntime extends Logger {
             throw new Error('Contract not initialized');
         }
 
-        if (this._hasUpgradedInCurrentExecution) {
+        if (this._hasUpdatedInCurrentExecution) {
             throw new Error(
-                'OP_NET: Cannot call other contracts after upgrading bytecode in the same execution',
+                'OP_NET: Cannot call other contracts after updating bytecode in the same execution',
             );
         }
 
