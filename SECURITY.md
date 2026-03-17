@@ -30,7 +30,7 @@ This policy covers:
 - The OP_VM integration layer (`ContractRuntime`, `RustContract`)
 - State management (`StateHandler`, `BytecodeManager`)
 - Gas accounting and consensus rule enforcement
-- Contract upgrade mechanisms (`updateFromAddress`, `applyPendingBytecodeUpgrade`)
+- Contract update mechanisms (`updateFromAddress`, `applyPendingBytecodeUpdate`)
 
 ## Out of Scope
 

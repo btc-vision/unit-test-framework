@@ -116,4 +116,4 @@ This is handled automatically by the framework when `Blockchain.transaction` is 
 
 ---
 
-[<- Previous: Upgradeable Contracts](./upgradeable-contracts.md) | [Next: Signature Verification ->](./signature-verification.md)
+[<- Previous: Updatable Contracts](./updatable-contracts.md) | [Next: Signature Verification ->](./signature-verification.md)

@@ -68,12 +68,12 @@ Median block timestamp.
 mineBlock(): void
 ```
 
-Advances `blockNumber` by 1. Used to test block-boundary behavior like upgrades:
+Advances `blockNumber` by 1. Used to test block-boundary behavior like updates:
 
 ```typescript
-await contract.upgrade(v2Address);
+await contract.update(v2Address);
 Blockchain.mineBlock();
-// Upgrade now takes effect
+// Update now takes effect
 const value = await contract.getValue();
 ```
 
