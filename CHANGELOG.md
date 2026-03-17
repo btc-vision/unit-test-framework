@@ -1,5 +1,14 @@
 # Changelog
 
+## [v1.0.0] - 2026-03-17
+
+### Other Changes
+
+- Rename upgrade to update ([#40](https://github.com/btc-vision/unit-test-framework/pull/40)) by @matbout
+
+
+
+
 ## [v1.0.0-rc.4] - 2026-03-08
 
 - No changes
