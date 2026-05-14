@@ -3,11 +3,13 @@ import {
     ContractManager,
     EnvironmentVariablesRequest,
     ExitDataResponse,
+    HardForkRequest,
 } from '@btc-vision/op-vm';
 
 import { BinaryWriter, SELECTOR_BYTE_LENGTH, U32_BYTE_LENGTH } from '@btc-vision/transaction';
 import { RustContractBinding } from './RustContractBinding';
 import { Blockchain } from '../../blockchain/Blockchain';
+import { CONSENSUS } from '../../contracts/configs';
 
 process.on('uncaughtException', (error) => {
     console.log('Uncaught Exception thrown:', error);
@@ -157,6 +159,7 @@ export class RustContract {
             BigInt(this.params.gasMax.toString()),
             BigInt(this.params.memoryPagesUsed.toString()),
             this.params.network,
+            CONSENSUS.CONSENSUS as unknown as HardForkRequest,
             this.params.isDebugMode,
             this.params.bypassCache ?? false,
         );
